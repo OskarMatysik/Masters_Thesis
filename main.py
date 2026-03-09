@@ -1,6 +1,11 @@
-def main():
-    print("Hello from praca-magisterska!")
-
+from src.models import DeffuantWeisbuchModel
 
 if __name__ == "__main__":
-    main()
+    model_1 = DeffuantWeisbuchModel(N=2000, d=0.5, mu=0.5, t=100)
+    model_2 = DeffuantWeisbuchModel(N=2000, d=0.2, mu=0.5, t=100)
+    model_1.run()
+    model_2.run()
+    model_1.plot_time_chart()
+    model_2.plot_time_chart()
+    model_1.plot_final_vs_initial()
+    model_2.plot_final_vs_initial()
