@@ -55,11 +55,11 @@ class DeffuantWeisbuchModel:
                 sizes.append(1)
         return cluster_count, sizes
 
-    def statistics(self) -> tuple[np.float64, int, list, np.float64]:
+    def statistics(self) -> tuple[float, int, list, float]:
         """Calculate statistics of the final opinions."""
-        std = np.float64(np.std(self.x))
+        std = float(np.std(self.x))
         cluster_count, cluster_sizes = self._clusters()
-        entropy = np.float64(differential_entropy(self.x, method="vasicek"))
+        entropy = float(differential_entropy(self.x, method="vasicek"))
         return std, cluster_count, cluster_sizes, entropy
 
     def plot_time_chart(self) -> None:
