@@ -1,7 +1,9 @@
 from models import *
 from multiprocessing import Pool
+from time import time
+import numpy as np
 
-class MultiDeffuantWeisbuch:
+class MultiDW:
     def __init__(self, num_of_runs: int,  N: int, d:float, mu:float, t:int | None = None, num_of_cores: int = 6) -> None:
         self.num_of_runs = num_of_runs
         self.num_of_cores = num_of_cores
@@ -39,14 +41,80 @@ class MultiDeffuantWeisbuch:
                 num_of_clusters.append(cc)
                 cluster_sizes.extend(cs)
                 entropy.append(e)
-        breakpoint()
         return np.mean(std), np.mean(num_of_clusters), np.mean(cluster_sizes), np.mean(entropy)
-                
+
+class MultiDWWithParams:
+    def __init__(self, num_of_runs: int, params: list, num_of_cores: int = 6, log: bool = False) -> None:
+        self.num_of_runs = num_of_runs
+        self.num_of_cores = num_of_cores
+        self.params = params
+        self.avg_std = []
+        self.avg_num_of_clusters = []
+        self.avg_cluster_sizes = []
+        self.avg_entropy = []
+        self.log = log
+
+    def run(self) -> None:
+        """Run the model given number of times and save the results."""
+        for N, d, mu, t in self.params:
+            start_time = time()
+            multi_model = MultiDW(num_of_runs=self.num_of_runs, N=N, d=d, mu=mu, t=t, num_of_cores=self.num_of_cores)
+            std, num_of_clusters, cluster_sizes, entropy = multi_model.run()
+            self.avg_std.append(std)
+            self.avg_num_of_clusters.append(num_of_clusters)
+            self.avg_cluster_sizes.append(cluster_sizes)
+            self.avg_entropy.append(entropy)
+            if self.log:
+                print(f"Finished {N=}, {d=}, {mu=}, {t=} in {time() - start_time:.2f}s.")
+    
+    # The results path is always the same here.
+    def plot_results(self) -> None:
+        ds = [params[1] for params in self.params]
+        """Plot the results."""
+        plt.figure(figsize=(12, 8))
+        plt.subplot(2, 2, 1)
+        plt.plot(ds, self.avg_std, marker='o')
+        plt.xlabel('d')
+        plt.ylabel('Average Std Dev')
+        plt.title('Average Std Dev vs d')
+        
+        plt.subplot(2, 2, 2)
+        plt.plot(ds, self.avg_num_of_clusters, marker='o')
+        plt.xlabel('d')
+        plt.ylabel('Average Number of Clusters')
+        plt.title('Average Number of Clusters vs d')
+        
+        plt.subplot(2, 2, 3)
+        plt.plot(ds, self.avg_cluster_sizes, marker='o')
+        plt.xlabel('d')
+        plt.ylabel('Average Cluster Size')
+        plt.title('Average Cluster Size vs d')
+        
+        plt.subplot(2, 2, 4)
+        plt.plot(ds, self.avg_entropy, marker='o')
+        plt.xlabel('d')
+        plt.ylabel('Average Entropy')
+        plt.title('Average Entropy vs d')
+        
+        plt.tight_layout()
+        plt.savefig("tests/multi_deffuant_weisbuch/results.png")
+
+# This doesnt work for t = None
+def generate_params(N:int, dl:float, dh:float, mu:float, t:int) -> list:
+    """Generate parameters for MultiDWWithParams class."""
+    ds = np.arange(dl, dh + .05, .05).astype(float)
+    return [(N, d, mu, t) for d in ds]
     
 if __name__ == "__main__":
-    multi_model = MultiDeffuantWeisbuch(num_of_runs=20, N=1000, d=0.35, mu=0.5, t=50)
-    stats = multi_model.run()
-    # breakpoint()
+    # Testing on parameter ranges:
+    # N = 1000
+    # d = [0.05, 0.1, ..., 0.5]
+    # mu = 0.5
+    # t = 50
+    params = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=50)
+    multi_model = MultiDWWithParams(num_of_runs=100, params=params, log=True)
+    multi_model.run()
+    multi_model.plot_results()
 
 
     
