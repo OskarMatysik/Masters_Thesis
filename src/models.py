@@ -108,7 +108,7 @@ class DeffuantWeisbuchModel:
         plt.ylabel("Opinion")
         plt.title("Deffuant-Weisbuch Model Time Chart")
         plt.legend()
-        plt.savefig(f"tests/deffuant_weisbuch/N{self.N}_d{self.d}_mu{self.mu}_{self.topology}_time_chart.png")
+        plt.savefig(f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_time_chart.png")
 
     def plot_final_vs_initial(self) -> None:
         """Plot the final opinions vs initial opinions."""
@@ -117,7 +117,7 @@ class DeffuantWeisbuchModel:
         plt.xlabel("Initial Opinion")
         plt.ylabel("Final Opinion")
         plt.title("Deffuant-Weisbuch Model: Final vs Initial Opinions")
-        plt.savefig(f"tests/deffuant_weisbuch/N{self.N}_d{self.d}_mu{self.mu}_{self.topology}_final_vs_initial.png")
+        plt.savefig(f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_final_init.png")
         
 
 if __name__ == "__main__":
