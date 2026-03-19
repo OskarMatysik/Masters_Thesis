@@ -4,13 +4,14 @@ from time import time
 import numpy as np
 
 class MultiDW:
-    def __init__(self, num_of_runs: int,  N: int, d:float, mu:float, t:int | None = None, num_of_cores: int = 6) -> None:
+    def __init__(self, num_of_runs: int,  N: int, d:float, mu:float, t:int | None = None, topology: str = "full", num_of_cores: int = 6) -> None:
         self.num_of_runs = num_of_runs
         self.num_of_cores = num_of_cores
         self.N = N
         self.d = d
         self.mu = mu
         self.t = t
+        self.topology = topology
         self.chunks = [np.arange(num_of_runs)[i::num_of_cores] for i in range(num_of_cores)]
 
     def run(self) -> None:
@@ -23,7 +24,7 @@ class MultiDW:
         """Run the model and return the statistics."""
         chunk_results = []
         for _ in chunk:
-            model = DeffuantWeisbuchModel(N=self.N, d=self.d, mu=self.mu, t=self.t)
+            model = DeffuantWeisbuchModel(N=self.N, d=self.d, mu=self.mu, t=self.t, topology=self.topology)
             model.run()
             chunk_results.append(model.statistics())
         return chunk_results
@@ -97,10 +98,10 @@ class MultiDWWithParams:
         plt.title('Average Entropy vs d')
         
         plt.tight_layout()
-        plt.savefig("tests/multi_deffuant_weisbuch/results.png")
+        plt.savefig(f"tests/multi_deffuant_weisbuch_{self.params[-1]}/results.png")
 
 # This doesnt work for t = None
-def generate_params(N:int, dl:float, dh:float, mu:float, t:int) -> list:
+def generate_params(N:int, dl:float, dh:float, mu:float, t:int, topology: str) -> list:
     """Generate parameters for MultiDWWithParams class."""
     ds = np.arange(dl, dh + .05, .05).astype(float)
     return [(N, d, mu, t) for d in ds]
@@ -111,10 +112,15 @@ if __name__ == "__main__":
     # d = [0.05, 0.1, ..., 0.5]
     # mu = 0.5
     # t = 50
-    params = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=50)
-    multi_model = MultiDWWithParams(num_of_runs=100, params=params, log=True)
-    multi_model.run()
-    multi_model.plot_results()
+    params_full = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=50, topology="full")
+    params_random = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=50, topology="random")
+    params_scale_free = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=50, topology="scale-free")
+    params_net = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=50, topology="net")
+    params = params_full, params_random, params_scale_free, params_net
+    for p in params:
+        multi_model = MultiDWWithParams(num_of_runs=5, params=p, log=True)
+        multi_model.run()
+        multi_model.plot_results()
 
 
     

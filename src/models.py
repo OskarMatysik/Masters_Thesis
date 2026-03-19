@@ -1,22 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import differential_entropy
+import networkx as nx
 
 class DeffuantWeisbuchModel:
-    def __init__(self, N: int, d:float, mu:float, t:int | None = None) -> None:
+    def __init__(self, N: int, d:float, mu:float, t:int | None = None, topology: str = "full") -> None:
         """Parameters:
         N: Number of agents
         d: Disagreement threshold
         mu: Confidence level
         t: Number of time steps
+        topology: Topology of the network (full, random, scale-free, net)
+
         """
-        self.N = N
+        if topology == "net":
+            self.N = int(np.ceil(np.sqrt(N))**2)
+        else:
+            self.N = N
         self.d = d
         self.mu = mu
         self.t = t
-        self.x = np.random.random(N)
+        self.x = np.random.random(self.N)
         self.history = []
         self.converged = False
+        self.topology = topology
+        self.neighborhood = self._generate_topology()
 
     def run(self) -> None:
         """Run the model for t time steps."""
@@ -36,14 +44,44 @@ class DeffuantWeisbuchModel:
 
     def _step(self) -> None:
         """Perform one time step of the model. Each step consists of N interactions."""
-        for _ in range(self.N):
-            i, j = np.random.choice(self.N, 2, replace=False)
+        for _ in range(self.N // 2):
+            i = np.random.choice(self.N)
+            # breakpoint()
+            j = np.random.choice(np.argwhere(self.neighborhood[i]).flatten())
+            # i, j = np.random.choice(self.N, 2, replace=False)
             if np.abs(self.x[i] - self.x[j]) < self.d:
                 self.x[i] += self.mu * (self.x[j] - self.x[i])
                 self.x[j] += self.mu * (self.x[i] - self.x[j])
+
+    def _generate_topology(self) -> np.ndarray:
+        """Generate the topology of the network."""
+        if self.topology == "full":
+            return np.ones((self.N, self.N)) - np.eye(self.N)
+        elif self.topology == "random":
+            p = 0.1
+            M = np.triu(np.random.rand(self.N, self.N) < p, 1)
+            return M + M.T
+        elif self.topology == "scale-free":
+            G = nx.barabasi_albert_graph(self.N, 3)
+            return nx.to_numpy_array(G)
+        elif self.topology == "net":
+            M = np.zeros((self.N, self.N))
+            size = np.sqrt(self.N).astype(int)
+            for i in range(self.N):
+                row = i // size
+                col = i % size
+                neighbors = np.array([(col + c) % size + (row + r) % size * size for r in range(-1, 2) for c in range(-1, 2)])
+                M[i, neighbors] = 1
+
+            return M - np.eye(self.N)
+        else:
+            raise ValueError("Invalid topology")
+
                 
     def _clusters(self) -> tuple[int, list]:
-        """Calculate clusters of opinions. Return number of clusters and size of each cluster."""
+        """Calculate clusters of opinions. Return number of clusters and size of each cluster.
+        Two agents are considered in the same cluster if their opinions differ by less than d/2.
+        """
         sorted_opinions = np.sort(self.x)
         cluster_count = 1
         sizes = [1]
@@ -70,7 +108,7 @@ class DeffuantWeisbuchModel:
         plt.ylabel("Opinion")
         plt.title("Deffuant-Weisbuch Model Time Chart")
         plt.legend()
-        plt.savefig(f"tests/deffuant_weisbuch/N{self.N}_d{self.d}_mu{self.mu}_time_chart.png")
+        plt.savefig(f"tests/deffuant_weisbuch/N{self.N}_d{self.d}_mu{self.mu}_{self.topology}_time_chart.png")
 
     def plot_final_vs_initial(self) -> None:
         """Plot the final opinions vs initial opinions."""
@@ -79,8 +117,13 @@ class DeffuantWeisbuchModel:
         plt.xlabel("Initial Opinion")
         plt.ylabel("Final Opinion")
         plt.title("Deffuant-Weisbuch Model: Final vs Initial Opinions")
-        plt.savefig(f"tests/deffuant_weisbuch/N{self.N}_d{self.d}_mu{self.mu}_final_vs_initial.png")
+        plt.savefig(f"tests/deffuant_weisbuch/N{self.N}_d{self.d}_mu{self.mu}_{self.topology}_final_vs_initial.png")
         
 
 if __name__ == "__main__":
-    pass
+    # full = DeffuantWeisbuchModel(15, .2, .5, 50, "full")
+    # random = DeffuantWeisbuchModel(15, .2, .5, 50, "random")
+    # scale_free = DeffuantWeisbuchModel(15, .2, .5, 50, "scale-free")
+    net = DeffuantWeisbuchModel(1000, .2, .5, 50, "net")
+    breakpoint()
+    

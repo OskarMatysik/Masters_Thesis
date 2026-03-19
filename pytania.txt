@@ -1,0 +1,1 @@
+1. Co zrobić z parametrami związanymi z topologią? Teraz są na sztywno
