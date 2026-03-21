@@ -2,16 +2,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import differential_entropy
 import networkx as nx
+import pandas as pd
 
 class DeffuantWeisbuchModel:
-    def __init__(self, N: int, d:float, mu:float, t:int | None = None, topology: str = "full") -> None:
+    def __init__(self, N: int, d:float, mu:float, t:int | None = None, topology: str = "full", num_of_data_points: int | None = None) -> None:
         """Parameters:
         N: Number of agents
         d: Disagreement threshold
         mu: Confidence level
         t: Number of time steps
         topology: Topology of the network (full, random, scale-free, net)
-
+        num_of_data_points: Number of data points to export to file (if None, export none)
         """
         if topology == "net":
             self.N = int(np.ceil(np.sqrt(N))**2)
@@ -25,6 +26,7 @@ class DeffuantWeisbuchModel:
         self.converged = False
         self.topology = topology
         self.neighborhood = self._generate_topology()
+        self.num_of_data_points = num_of_data_points
 
     def run(self) -> None:
         """Run the model for t time steps."""
@@ -62,7 +64,7 @@ class DeffuantWeisbuchModel:
             M = np.triu(np.random.rand(self.N, self.N) < p, 1)
             return M + M.T
         elif self.topology == "scale-free":
-            G = nx.barabasi_albert_graph(self.N, 3)
+            G = nx.barabasi_albert_graph(self.N, int(np.sqrt(self.N)))
             return nx.to_numpy_array(G)
         elif self.topology == "net":
             M = np.zeros((self.N, self.N))
@@ -99,6 +101,16 @@ class DeffuantWeisbuchModel:
         cluster_count, cluster_sizes = self._clusters()
         entropy = float(differential_entropy(self.x, method="vasicek"))
         return std, cluster_count, cluster_sizes, entropy
+    
+    def export_data(self) -> None:
+        """Export opinions of agents at random time steps to a file."""
+        if self.num_of_data_points is None:
+            return
+        indices = np.sort(np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int))
+        data = pd.DataFrame(np.array([self.history[i] for i in indices]).T, columns=indices)
+        stats = pd.DataFrame([self.statistics()], columns=["std", "num_of_clusters", "cluster_sizes", "entropy"])
+        data.to_csv(f"results/o_N{self.N}_d{self.d}_mu{self.mu}.csv", index=False)
+        stats.to_csv(f"results/s_N{self.N}_d{self.d}_mu{self.mu}.csv", index=False)
 
     def plot_time_chart(self) -> None:
         """Plot the time chart of opinions."""
@@ -124,6 +136,7 @@ if __name__ == "__main__":
     # full = DeffuantWeisbuchModel(15, .2, .5, 50, "full")
     # random = DeffuantWeisbuchModel(15, .2, .5, 50, "random")
     # scale_free = DeffuantWeisbuchModel(15, .2, .5, 50, "scale-free")
-    net = DeffuantWeisbuchModel(1000, .2, .5, 50, "net")
-    breakpoint()
+    net = DeffuantWeisbuchModel(1000, .2, .5, 50, "full", num_of_data_points=5)
+    net.run()
+    net.export_data()
     
