@@ -1,4 +1,4 @@
-from models import *
+from .models import *
 from multiprocessing import Pool
 from time import time
 import numpy as np
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     # params_net = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=200, topology="net")
     params = params_full, params_random, params_scale_free#, params_net
     for p in params:
-        multi_model = MultiDWWithParams(num_of_runs=1, params=p, log=True)
+        multi_model = MultiDWWithParams(num_of_runs=100, params=p, log=True)
         multi_model.run()
         multi_model.plot_results()
 
