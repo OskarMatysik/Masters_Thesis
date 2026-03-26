@@ -3,9 +3,10 @@ import numpy as np
 import pandas as pd
 
 class GA1Calibration:
-    def __init__(self, o_name: str, pop_size: int, p_c: float, p_m: float, max_iter: int, stop_fitness: float, L_p: float, U_p: float) -> None:
+    def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, max_iter: int, stop_fitness: float, L_p: float, U_p: float) -> None:
         """Parameters: 
         o_name (str): Name of the opinion file
+        num_of_params: Number of parameters (genes) of the model
         pop_size (int): Size of the population for the genetic algorithm
         p_c (float): Crossover probability
         p_m (float): Mutation probability
@@ -14,6 +15,7 @@ class GA1Calibration:
         L_p (float): Lower bound for the parameters
         U_p (float): Upper bound for the parameters"""
         self.t, self.y_real = self._read_opinions(o_name)
+        self.num_of_params = num_of_params
         self.pop_size = pop_size
         self.p_c = p_c
         self.p_m = p_m
@@ -51,7 +53,11 @@ class GA1Calibration:
     
     def _crossover(self, parents):
         """Perform crossover for 2 chosen chromosomes."""
-        pass
+        gene = np.random.choice(self.num_of_params)
+        ratio = np.random.random() # for now U(0, 1), may change later
+        chromosome_1, chromosome_2 = parents[0], parents[1]
+        chromosome_1[gene] = chromosome_1[gene] * ratio + chromosome_2[gene] * (1 - ratio)
+        chromosome_2[gene] = chromosome_2[gene] * ratio + chromosome_1[gene] * (1 - ratio)
     
     def run(self) -> None:
         """Run the genetic algorithm to calibrate the model."""

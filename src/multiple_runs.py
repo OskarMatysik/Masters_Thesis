@@ -1,7 +1,8 @@
-from .models import *
+from models import *
 from multiprocessing import Pool
 from time import time
 import numpy as np
+import matplotlib.pyplot as plt
 
 class MultiDW:
     def __init__(self, num_of_runs: int,  N: int, d:float, mu:float, t:int | None = None, topology: str = "full", num_of_cores: int = 6) -> None:
@@ -112,13 +113,14 @@ if __name__ == "__main__":
     # d = [0.05, 0.1, ..., 0.5]
     # mu = 0.5
     # t = 50
-    params_full = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="full")
-    params_random = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="random")
-    params_scale_free = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="scale-free")
-    # params_net = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=200, topology="net")
-    params = params_full, params_random, params_scale_free#, params_net
+    # params_full = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="full")
+    # params_random = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="random")
+    # params_scale_free = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="scale-free")
+    params_net = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=1000, topology="net")
+    # params = params_full, params_random, params_scale_free#, params_net
+    params = [params_net]
     for p in params:
-        multi_model = MultiDWWithParams(num_of_runs=100, params=p, log=True)
+        multi_model = MultiDWWithParams(num_of_runs=50, params=p, log=True)
         multi_model.run()
         multi_model.plot_results()
 

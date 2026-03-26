@@ -136,7 +136,7 @@ if __name__ == "__main__":
     # full = DeffuantWeisbuchModel(15, .2, .5, 50, "full")
     # random = DeffuantWeisbuchModel(15, .2, .5, 50, "random")
     # scale_free = DeffuantWeisbuchModel(15, .2, .5, 50, "scale-free")
-    net = DeffuantWeisbuchModel(1000, .2, .5, 50, "full", num_of_data_points=5)
+    net = DeffuantWeisbuchModel(1000, .23, .46, 100, "full", num_of_data_points=5)
     net.run()
     net.export_data()
     
