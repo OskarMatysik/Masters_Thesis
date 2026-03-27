@@ -109,8 +109,8 @@ class DeffuantWeisbuchModel:
         indices = np.sort(np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int))
         data = pd.DataFrame(np.array([self.history[i] for i in indices]).T, columns=indices)
         stats = pd.DataFrame([self.statistics()], columns=["std", "num_of_clusters", "cluster_sizes", "entropy"])
-        data.to_csv(f"results/o_N{self.N}_d{self.d}_mu{self.mu}.csv", index=False)
-        stats.to_csv(f"results/s_N{self.N}_d{self.d}_mu{self.mu}.csv", index=False)
+        data.to_csv(f"results/o_N{self.N}_d{self.d}_mu{self.mu}_{self.topology}.csv", index=False)
+        # stats.to_csv(f"results/s_N{self.N}_d{self.d}_mu{self.mu}_{self.topology}.csv", index=False)
 
     def plot_time_chart(self) -> None:
         """Plot the time chart of opinions."""
