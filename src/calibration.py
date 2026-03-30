@@ -2,7 +2,7 @@ from models import DeffuantWeisbuchModel
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import ecdf
+from scipy.stats import ecdf, differential_entropy
 
 class GA1Calibration:
     def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, max_iter: int, stop_fitness: float, L_p: float, U_p: float, mutation_range: float, topology: str, log: bool = False) -> None:
@@ -45,20 +45,26 @@ class GA1Calibration:
         """Calculate fitness based on MSE between real and predicted CDFs.
         y_pred (np.ndarray): Predicted opinions for the given time steps."""
 
-        cdf_mse_values = []
-        x_eval = np.linspace(0, 1, 100)
+        # cdf_mse_values = []
+        # x_eval = np.linspace(0, 1, 100)
         
-        for time_idx in range(len(self.t)):
+        # for time_idx in range(len(self.t)):
 
-            ecdf_real = ecdf(self.y_real[time_idx])
-            ecdf_pred = ecdf(y_pred[time_idx])
+        #     ecdf_real = ecdf(self.y_real[time_idx])
+        #     ecdf_pred = ecdf(y_pred[time_idx])
             
-            mse = np.sum((ecdf_real.cdf.evaluate(x_eval) - ecdf_pred.cdf.evaluate(x_eval)) ** 2)
-            cdf_mse_values.append(mse)
+        #     mse = np.sum((ecdf_real.cdf.evaluate(x_eval) - ecdf_pred.cdf.evaluate(x_eval)) ** 2)
+        #     cdf_mse_values.append(mse)
         
-        total_mse = np.sum(cdf_mse_values)
+        # total_mse = np.sum(cdf_mse_values)
         
-        return 1 / (1 + total_mse)
+        # return 1 / (1 + total_mse)
+        
+        entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
+        entropy_pred = np.array([differential_entropy(sample) for sample in y_pred])
+        
+        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
+        
     
     def _init_population(self) -> np.ndarray:
         """Initialize the population for the genetic algorithm.
@@ -262,22 +268,26 @@ class GA2Calibration:
     def _fitness(self, y_pred: np.ndarray) -> float:
         """Calculate fitness based on MSE between real and predicted CDFs.
         y_pred (np.ndarray): Predicted opinions for the given time steps."""
-        cdf_mse_values = []
-        x_eval = np.linspace(0, 1, 100)
+        # cdf_mse_values = []
+        # x_eval = np.linspace(0, 1, 100)
         
-        for time_idx in range(len(self.t)):
+        # for time_idx in range(len(self.t)):
 
-            ecdf_real = ecdf(self.y_real[time_idx])
-            ecdf_pred = ecdf(y_pred[time_idx])
+        #     ecdf_real = ecdf(self.y_real[time_idx])
+        #     ecdf_pred = ecdf(y_pred[time_idx])
             
-            mse = np.sum((ecdf_real.cdf.evaluate(x_eval) - ecdf_pred.cdf.evaluate(x_eval)) ** 2)
-            if mse >= self.gamma_t: # 4c
-                return 0
-            cdf_mse_values.append(mse)
+        #     mse = np.sum((ecdf_real.cdf.evaluate(x_eval) - ecdf_pred.cdf.evaluate(x_eval)) ** 2)
+        #     if mse >= self.gamma_t: # 4c
+        #         return 0
+        #     cdf_mse_values.append(mse)
         
-        total_mse = np.sum(cdf_mse_values)
+        # total_mse = np.sum(cdf_mse_values)
         
-        return 1 / (1 + total_mse)
+        # return 1 / (1 + total_mse)
+        entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
+        entropy_pred = np.array([differential_entropy(sample) for sample in y_pred])
+        
+        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
     
     def _init_population(self) -> np.ndarray:
         """Initialize the population for the genetic algorithm.
@@ -396,7 +406,7 @@ if __name__ == "__main__":
             p_c=0.7,
             p_m=0.1, 
             max_iter=50, 
-            stop_fitness=0.75, 
+            stop_fitness=0.99, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.01, 
@@ -410,7 +420,7 @@ if __name__ == "__main__":
             p_c=0.7,
             p_m=0.1, 
             max_iter=50, 
-            stop_fitness=0.75, 
+            stop_fitness=0.99, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.01,            
@@ -421,9 +431,9 @@ if __name__ == "__main__":
             alpha=0.2,
             log=True
         )
-    # calibration.run()
-    # calibration.export_result()
-    # calibration.plot_best()
+    calibration.run()
+    calibration.export_result()
+    calibration.plot_best()
     # calibration._loss_test()
     calibration_2.run()
     calibration_2.export_result()

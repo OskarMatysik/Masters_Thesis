@@ -102,9 +102,9 @@ class MultiDWWithParams:
         plt.savefig(f"multiple_simulations/multi_deffuant_weisbuch_{self.params[-1][-1]}/results.png")
 
 # This doesnt work for t = None
-def generate_params(N:int, dl:float, dh:float, mu:float, t:int, topology: str) -> list:
+def generate_params(N:int, dl:float, dh:float, mu:float, t:int, topology: str, step: float) -> list:
     """Generate parameters for MultiDWWithParams class."""
-    ds = np.arange(dl, dh + .05, .05).astype(float)
+    ds = np.arange(dl, dh + step, step).astype(float)
     return [(N, d, mu, t, topology) for d in ds]
     
 if __name__ == "__main__":
@@ -113,14 +113,14 @@ if __name__ == "__main__":
     # d = [0.05, 0.1, ..., 0.5]
     # mu = 0.5
     # t = 50
-    # params_full = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="full")
-    # params_random = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="random")
-    # params_scale_free = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="scale-free")
-    params_net = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=1000, topology="net")
+    params_full = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="full", step=0.01)
+    params_random = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="random", step=0.01)
+    params_scale_free = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="scale-free", step=0.01)
+    params_net = generate_params(N=1000, dl=0.05, dh=0.5, mu=0.5, t=1000, topology="net", step=0.01)
     # params = params_full, params_random, params_scale_free#, params_net
-    params = [params_net]
+    params = [params_full]
     for p in params:
-        multi_model = MultiDWWithParams(num_of_runs=50, params=p, log=True)
+        multi_model = MultiDWWithParams(num_of_runs=5, params=p, log=True)
         multi_model.run()
         multi_model.plot_results()
 
