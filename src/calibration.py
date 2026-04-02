@@ -63,7 +63,7 @@ class GA1Calibration:
         entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
         entropy_pred = np.array([differential_entropy(sample) for sample in y_pred])
         
-        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
+        return 1 / (1 + np.sum(np.abs((entropy_real - entropy_pred)/entropy_real)))
         
     
     def _init_population(self) -> np.ndarray:
@@ -406,7 +406,7 @@ if __name__ == "__main__":
             p_c=0.7,
             p_m=0.1, 
             max_iter=50, 
-            stop_fitness=0.99, 
+            stop_fitness=0.9, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.01, 
@@ -435,7 +435,7 @@ if __name__ == "__main__":
     calibration.export_result()
     calibration.plot_best()
     # calibration._loss_test()
-    calibration_2.run()
-    calibration_2.export_result()
-    calibration_2.plot_best()
+    # calibration_2.run()
+    # calibration_2.export_result()
+    # calibration_2.plot_best()
     # calibration_2._loss_test()
