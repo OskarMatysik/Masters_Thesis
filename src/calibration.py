@@ -1,21 +1,36 @@
 from models import DeffuantWeisbuchModel
+from multiple_runs import MultiDW
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import ecdf, differential_entropy
 
 class GA1Calibration:
-    def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, max_iter: int, stop_fitness: float, L_p: float, U_p: float, mutation_range: float, topology: str, log: bool = False) -> None:
-        """Parameters: 
-        o_name (str): Name of the opinion file
-        num_of_params: Number of parameters (genes) of the model
-        pop_size (int): Size of the population for the genetic algorithm
-        p_c (float): Crossover probability
-        p_m (float): Mutation probability
-        max_iter (int): Maximum number of iterations for the genetic algorithm
-        stop_fitness (float): Fitness value to stop the algorithm
-        L_p (float): Lower bound for the parameters
-        U_p (float): Upper bound for the parameters"""
+    """Genetic algorithm calibration using the Deffuant–Weisbuch model.
+
+    This class performs GA-based parameter search by comparing model outcomes
+    to real opinion data using entropy-based fitness evaluation.
+    """
+    def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, 
+                 max_iter: int, stop_fitness: float, L_p: float, U_p: float, mutation_range: float, 
+                 topology: str, num_of_simulations: int, log: bool = False) -> None:
+        """Initialize the GA1 calibration.
+
+        Args:
+            o_name (str): Opinion data file name without extension.
+            num_of_params (int): Number of genes in each chromosome.
+            pop_size (int): Number of chromosomes in the population.
+            p_c (float): Probability of performing crossover.
+            p_m (float): Probability of mutating each gene.
+            max_iter (int): Maximum number of algorithm iterations.
+            stop_fitness (float): Fitness threshold for early stopping.
+            L_p (Sequence[float]): Lower bounds for each parameter.
+            U_p (Sequence[float]): Upper bounds for each parameter.
+            mutation_range (float): Variance used to compute mutation standard deviation.
+            topology (str): Network topology for the model simulations.
+            num_of_simulations (int): Number of simulation runs used per chromosome.
+            log (bool): If True, print progress updates during optimization.
+        """
         self.name = o_name
         self.t, self.y_real = self._read_opinions(o_name)
         self.num_of_params = num_of_params
@@ -28,6 +43,7 @@ class GA1Calibration:
         self.U_p = U_p
         self.topology = topology
         self.mutation_range = np.sqrt(mutation_range) # standard deviation instead of variance
+        self.num_of_simulations = num_of_simulations
         self.log = log
         self.result = None
         self.fitness = None
@@ -41,9 +57,15 @@ class GA1Calibration:
         t = np.array(df.columns, dtype=int)
         return t, np.sort(df.to_numpy(), axis=0).T
     
-    def _fitness(self, y_pred: np.ndarray) -> float:
-        """Calculate fitness based on MSE between real and predicted CDFs.
-        y_pred (np.ndarray): Predicted opinions for the given time steps."""
+    def _fitness(self, entropy_pred: list) -> float:
+        """
+        Calculate fitness based on MSE between real and predicted CDFs for single simulation.
+        y_pred (np.ndarray): Predicted opinions for the given time steps.
+        
+        1. ecdf approach - failed (add y_pred: np.ndarray = None to work)
+        2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
+        3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
+        """
 
         # cdf_mse_values = []
         # x_eval = np.linspace(0, 1, 100)
@@ -60,10 +82,12 @@ class GA1Calibration:
         
         # return 1 / (1 + total_mse)
         
+
         entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
-        entropy_pred = np.array([differential_entropy(sample) for sample in y_pred])
+        entropy_pred = np.array(entropy_pred)
+        # entropy_pred = np.array([differential_entropy(sample) for sample in y_pred])
         
-        return 1 / (1 + np.sum(np.abs((entropy_real - entropy_pred)/entropy_real)))
+        return 1 / (1 + np.sum(np.abs((entropy_real - entropy_pred))))
         
     
     def _init_population(self) -> np.ndarray:
@@ -101,12 +125,11 @@ class GA1Calibration:
             new_population = []
             
             for chr_id, chromosome in enumerate(population):
-                model = DeffuantWeisbuchModel(N=np.shape(self.y_real)[1], d=chromosome[0], mu=chromosome[1], t=max(self.t), topology=self.topology)
-                model.run()
-                y_pred = np.sort(np.array([model.history[t-1] for t in self.t]), axis=1)
-                fitness = self._fitness(y_pred)
-                fitness_values[chr_id] = fitness
-                
+
+                multi_model = MultiDW(self.num_of_simulations, N=np.shape(self.y_real)[1], d=chromosome[0], mu=chromosome[1], t=max(self.t), topology=self.topology, snapshots=self.t)
+                entropy_pred = multi_model.run()[-1]
+                fitness_values[chr_id] = self._fitness(entropy_pred)
+
             for _ in range(int(self.pop_size * self.p_c // 2)):
                 tournament = np.sort(np.random.choice(self.pop_size, 3, replace=False))
                 f_vals = fitness_values[tournament]
@@ -115,14 +138,14 @@ class GA1Calibration:
                 parents = population[parents_ids]
                 new_population.extend(self._crossover(parents))
             
-            for _ in range(self.pop_size - int(self.pop_size * self.p_c)):
+            for _ in range(self.pop_size - int(self.pop_size * self.p_c // 2) * 2):
                 tournament = np.sort(np.random.choice(self.pop_size, 3, replace=False))
                 f_vals = fitness_values[tournament]
                 strongest_index = np.argmax(f_vals)
                 strongest = population[tournament[strongest_index]]
                 new_population.append(strongest)
                 
-            for chr_id in range(self.pop_size):
+            for chr_id in range(len(new_population)):
                 for gene_id in range(self.num_of_params):
                     if np.random.random() < self.p_m:
                         new_value = new_population[chr_id][gene_id] + np.random.normal(0, self.mutation_range)
@@ -222,19 +245,35 @@ class GA1Calibration:
         
 
 class GA2Calibration:
+    """Genetic algorithm calibration with dynamic thresholding and duplicate removal.
+
+    This class extends the GA1-style calibration to include parameter rounding,
+    adaptive gamma thresholding, and duplicate chromosome pruning.
+    """
     def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, max_iter: int,
-                 stop_fitness: float, L_p: float, U_p: float, mutation_range: float, topology: str,
-                 beta: int, gamma_L: float, gamma_U: float, alpha: float, log: bool = False) -> None:
-        """Parameters: 
-        o_name (str): Name of the opinion file
-        num_of_params: Number of parameters (genes) of the model
-        pop_size (int): Size of the population for the genetic algorithm
-        p_c (float): Crossover probability
-        p_m (float): Mutation probability
-        max_iter (int): Maximum number of iterations for the genetic algorithm
-        stop_fitness (float): Fitness value to stop the algorithm
-        L_p (float): Lower bound for the parameters
-        U_p (float): Upper bound for the parameters"""
+                 stop_fitness: float, L_p: float, U_p: float, mutation_range: float, num_of_simulations: int,
+                 topology: str, beta: int, gamma_L: float, gamma_U: float, alpha: float, log: bool = False) -> None:
+        """Initialize the GA2 calibration.
+
+        Args:
+            o_name (str): Opinion data file name without extension.
+            num_of_params (int): Number of genes in each chromosome.
+            pop_size (int): Number of chromosomes in the population.
+            p_c (float): Probability of performing crossover.
+            p_m (float): Probability of mutating each gene.
+            max_iter (int): Maximum number of algorithm iterations.
+            stop_fitness (float): Fitness threshold for early stopping.
+            L_p (Sequence[float]): Lower bounds for each parameter.
+            U_p (Sequence[float]): Upper bounds for each parameter.
+            mutation_range (float): Variance used to compute mutation standard deviation.
+            num_of_simulations (int): Number of simulation runs used per chromosome.
+            topology (str): Network topology for the model simulations.
+            beta (int): Number of decimal places used for rounding chromosome values.
+            gamma_L (float): Lower bound for the dynamic gamma threshold.
+            gamma_U (float): Upper bound for the dynamic gamma threshold.
+            alpha (float): Decay rate for updating gamma over iterations.
+            log (bool): If True, print progress updates during optimization.
+        """
         self.name = o_name
         self.t, self.y_real = self._read_opinions(o_name)
         self.num_of_params = num_of_params
@@ -247,6 +286,7 @@ class GA2Calibration:
         self.U_p = U_p
         self.topology = topology
         self.mutation_range = np.sqrt(mutation_range) # standard deviation instead of variance
+        self.num_of_simulations = num_of_simulations
         self.log = log
         self.result = None
         self.fitness = None
@@ -265,9 +305,16 @@ class GA2Calibration:
         t = np.array(df.columns, dtype=int)
         return t, np.sort(df.to_numpy(), axis=0).T
     
-    def _fitness(self, y_pred: np.ndarray) -> float:
-        """Calculate fitness based on MSE between real and predicted CDFs.
-        y_pred (np.ndarray): Predicted opinions for the given time steps."""
+    def _fitness(self, entropy_pred: list) -> float:
+        """
+        Calculate fitness based on MSE between real and predicted CDFs for single simulation.
+        y_pred (np.ndarray): Predicted opinions for the given time steps.
+        
+        1. ecdf approach - failed (add y_pred: np.ndarray = None to work)
+        2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
+        3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
+        """
+
         # cdf_mse_values = []
         # x_eval = np.linspace(0, 1, 100)
         
@@ -277,17 +324,20 @@ class GA2Calibration:
         #     ecdf_pred = ecdf(y_pred[time_idx])
             
         #     mse = np.sum((ecdf_real.cdf.evaluate(x_eval) - ecdf_pred.cdf.evaluate(x_eval)) ** 2)
-        #     if mse >= self.gamma_t: # 4c
-        #         return 0
         #     cdf_mse_values.append(mse)
         
         # total_mse = np.sum(cdf_mse_values)
         
         # return 1 / (1 + total_mse)
-        entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
-        entropy_pred = np.array([differential_entropy(sample) for sample in y_pred])
         
-        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
+
+        entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
+        entropy_pred = np.array(entropy_pred)
+        diff = np.abs(entropy_real - entropy_pred)
+
+        if np.any(diff >= self.gamma_t):
+            return 0
+        return 1 / (1 + np.sum(np.abs((entropy_real - entropy_pred))))
     
     def _init_population(self) -> np.ndarray:
         """Initialize the population for the genetic algorithm.
@@ -312,7 +362,8 @@ class GA2Calibration:
         new_population = self._init_population()
         i = 0
         fitness_values = np.zeros(self.pop_size)
-        while i < self.max_iter and max(fitness_values) <= self.stop_fitness:
+        pop_size = self.pop_size
+        while i < self.max_iter and max(fitness_values) <= self.stop_fitness or pop_size < 3:
             
             population = np.array(new_population)
             new_population = []
@@ -320,21 +371,23 @@ class GA2Calibration:
             population.round(decimals=self.beta) # 4a
             
             for chr_id, chromosome in enumerate(population):
-                model = DeffuantWeisbuchModel(N=np.shape(self.y_real)[1], d=chromosome[0], mu=chromosome[1], t=max(self.t), topology=self.topology)
-                model.run()
-                y_pred = np.sort(np.array([model.history[t-1] for t in self.t]), axis=1)
-                fitness = self._fitness(y_pred)
-                fitness_values[chr_id] = fitness
+
+                multi_model = MultiDW(self.num_of_simulations, N=np.shape(self.y_real)[1], d=chromosome[0], mu=chromosome[1], t=max(self.t), topology=self.topology, snapshots=self.t)
+                entropy_pred = multi_model.run()[-1]
+                fitness_values[chr_id] = self._fitness(entropy_pred)
             
             fitness_values.round(decimals=self.beta) # 4a
             
             zeros = np.where(fitness_values == 0)[0]
             fitness_values = np.delete(fitness_values, zeros) # 4d
             population = np.delete(population, zeros, axis=0) # 4d
-            population, unique = np.unique(population, axis=0, return_index=True) # 4b
-            fitness_values = fitness_values[unique] # 4b
+            # population, unique = np.unique(population, axis=0, return_index=True) # 4b
+            # fitness_values = fitness_values[unique] # 4b
             
             pop_size = np.shape(population)[0]
+
+            if pop_size < 3:
+                break
                 
             for _ in range(int(pop_size * self.p_c // 2)):
                 tournament = np.sort(np.random.choice(pop_size, 3, replace=False))
@@ -344,14 +397,12 @@ class GA2Calibration:
                 parents = population[parents_ids]
                 new_population.extend(self._crossover(parents))
             
-            for _ in range(pop_size - int(pop_size * self.p_c // 2 * 2)):
+            for _ in range(pop_size - int(pop_size * self.p_c // 2) * 2):
                 tournament = np.sort(np.random.choice(pop_size, 3, replace=False))
                 f_vals = fitness_values[tournament]
                 strongest_index = np.argmax(f_vals)
                 strongest = population[tournament[strongest_index]]
                 new_population.append(strongest)
-            
-            print("Pop size", pop_size, "\n", "New pop size", len(new_population))
                 
             for chr_id in range(len(new_population)):
                 for gene_id in range(self.num_of_params):
@@ -363,6 +414,7 @@ class GA2Calibration:
             self.gamma_t = self.gamma_L + (self.gamma_U - self.gamma_L)/(1 + i * self.alpha)
             if self.log:
                 print(f"Iteration: {i}, Best fit: {max(fitness_values)}")
+                print(f"Pop size: {pop_size}")
             self.best.append(max(fitness_values))
         
         if i < self.max_iter:
@@ -402,15 +454,16 @@ if __name__ == "__main__":
     calibration = GA1Calibration(
             o_name="o_N1000_d0.23_mu0.46_full", 
             num_of_params=2, 
-            pop_size=100, 
+            pop_size=25, 
             p_c=0.7,
             p_m=0.1, 
             max_iter=50, 
             stop_fitness=0.9, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
-            mutation_range=0.01, 
+            mutation_range=0.005, 
             topology="full", 
+            num_of_simulations=5,
             log=True
         )
     calibration_2 = GA2Calibration(
@@ -420,22 +473,23 @@ if __name__ == "__main__":
             p_c=0.7,
             p_m=0.1, 
             max_iter=50, 
-            stop_fitness=0.99, 
+            stop_fitness=0.95, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
-            mutation_range=0.01,            
+            mutation_range=0.005, 
+            num_of_simulations=5,           
             topology="full", 
-            beta=3,
-            gamma_L=10,
-            gamma_U=30,
+            beta=6,
+            gamma_L=2,
+            gamma_U=10,
             alpha=0.2,
             log=True
         )
-    calibration.run()
-    calibration.export_result()
-    calibration.plot_best()
+    # calibration.run()
+    # calibration.export_result()
+    # calibration.plot_best()
     # calibration._loss_test()
-    # calibration_2.run()
-    # calibration_2.export_result()
-    # calibration_2.plot_best()
+    calibration_2.run()
+    calibration_2.export_result()
+    calibration_2.plot_best()
     # calibration_2._loss_test()

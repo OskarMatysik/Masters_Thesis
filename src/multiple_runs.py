@@ -3,9 +3,11 @@ from multiprocessing import Pool
 from time import time
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 class MultiDW:
-    def __init__(self, num_of_runs: int,  N: int, d:float, mu:float, t:int | None = None, topology: str = "full", num_of_cores: int = 6) -> None:
+    def __init__(self, num_of_runs: int,  N: int, d:float, mu:float, t:int | None = None, 
+                 topology: str = "full", num_of_cores: int = 16, snapshots: list | None = None) -> None:
         self.num_of_runs = num_of_runs
         self.num_of_cores = num_of_cores
         self.N = N
@@ -14,6 +16,7 @@ class MultiDW:
         self.t = t
         self.topology = topology
         self.chunks = [np.arange(num_of_runs)[i::num_of_cores] for i in range(num_of_cores)]
+        self.snapshots = snapshots
 
     def run(self) -> None:
         """Run the model given number of times and save the results."""
@@ -23,27 +26,51 @@ class MultiDW:
     
     def _mapper(self, chunk: np.ndarray) -> tuple[float, int, list, float]:
         """Run the model and return the statistics."""
+        np.random.seed(int.from_bytes(os.urandom(4), 'big')) # ai slop moment
         chunk_results = []
         for _ in chunk:
             model = DeffuantWeisbuchModel(N=self.N, d=self.d, mu=self.mu, t=self.t, topology=self.topology)
             model.run()
-            chunk_results.append(model.statistics())
+            chunk_results.append(model.statistics(self.snapshots))
         return chunk_results
     
-    def statistics(self, results) -> tuple[float, float, float, float]:
-        """Calculate statistics of the results."""
-        std = []
-        num_of_clusters = []
-        cluster_sizes = []
-        entropy = []
-        for chunk in results:
-            for result in chunk:
-                s, cc, cs, e = result
-                std.append(s)
-                num_of_clusters.append(cc)
-                cluster_sizes.extend(cs)
-                entropy.append(e)
-        return np.mean(std), np.mean(num_of_clusters), np.mean(cluster_sizes), np.mean(entropy)
+    def statistics(self, results):
+        """Calculate average statistics of the results. 
+        If snapshots is None return statistics for final poinions"""
+        if self.snapshots is None:
+            std = []
+            num_of_clusters = []
+            cluster_sizes = []
+            entropy = []
+            for chunk in results:
+                for result in chunk:
+                    s, cc, cs, e = result
+                    std.append(s)
+                    num_of_clusters.append(cc)
+                    cluster_sizes.extend(cs)
+                    entropy.append(e)
+            return np.mean(std), np.mean(num_of_clusters), np.mean(cluster_sizes), np.mean(entropy)
+        else:
+            std = [[] for _ in range(len(self.snapshots))]
+            num_of_clusters = [[] for _ in range(len(self.snapshots))]
+            cluster_sizes = [[] for _ in range(len(self.snapshots))]
+            entropy = [[] for _ in range(len(self.snapshots))]
+            for chunk in results:
+                for result in chunk:
+                    for i in range(len(self.snapshots)):
+                        s, cc, cs, e = [result[stat_id][i] for stat_id in range(4)]
+                        std[i].append(s)
+                        num_of_clusters[i].append(cc)
+                        cluster_sizes[i].append(cs)
+                        entropy[i].append(e)
+
+            return (
+                [np.mean(s) for s in std],
+                [np.mean(cc) for cc in num_of_clusters],
+                # [np.mean(cs) for cs in cluster_sizes],
+                [np.mean(e) for e in entropy]
+            )
+
 
 class MultiDWWithParams:
     def __init__(self, num_of_runs: int, params: list, num_of_cores: int = 6, log: bool = False) -> None:
@@ -120,7 +147,7 @@ if __name__ == "__main__":
     # params = params_full, params_random, params_scale_free#, params_net
     params = [params_full]
     for p in params:
-        multi_model = MultiDWWithParams(num_of_runs=5, params=p, log=True)
+        multi_model = MultiDWWithParams(num_of_runs=20, params=p, log=True)
         multi_model.run()
         multi_model.plot_results()
 

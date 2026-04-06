@@ -81,11 +81,15 @@ class DeffuantWeisbuchModel:
             raise ValueError("Invalid topology")
 
                 
-    def _clusters(self) -> tuple[int, list]:
+    def _clusters(self, t: int | None = None) -> tuple[int, list]:
         """Calculate clusters of opinions. Return number of clusters and size of each cluster.
         Two agents are considered in the same cluster if their opinions differ by less than d/2.
+        If t is None returns cluster statistics of final opinions
         """
-        sorted_opinions = np.sort(self.x)
+        if t is None:
+            sorted_opinions = np.sort(self.x)
+        else:
+            sorted_opinions = np.sort(self.history[t])
         cluster_count = 1
         sizes = [1]
         for i in range(1, len(sorted_opinions)):
@@ -96,11 +100,17 @@ class DeffuantWeisbuchModel:
                 sizes.append(1)
         return cluster_count, sizes
 
-    def statistics(self) -> tuple[float, int, list, float]:
-        """Calculate statistics of the final opinions."""
-        std = float(np.std(self.x))
-        cluster_count, cluster_sizes = self._clusters()
-        entropy = float(differential_entropy(self.x, method="vasicek"))
+    def statistics(self, snapshots: list | None = None):
+        """Calculate statistics of the opinions. If t is None return statistics of final opinions."""
+        if snapshots is None:
+            std = float(np.std(self.x))
+            cluster_count, cluster_sizes = self._clusters()
+            entropy = float(differential_entropy(self.x, method="vasicek"))
+        else:
+            std = [float(np.std(self.history[t])) for t in snapshots]
+            cluster_count = [self._clusters(t)[0] for t in snapshots]
+            cluster_sizes = [self._clusters(t)[1] for t in snapshots]
+            entropy = [float(differential_entropy(self.history[t], method="vasicek")) for t in snapshots]
         return std, cluster_count, cluster_sizes, entropy
     
     def export_data(self) -> None:
@@ -116,7 +126,7 @@ class DeffuantWeisbuchModel:
     def plot_time_chart(self) -> None:
         """Plot the time chart of opinions."""
         plt.figure(figsize=(10, 6))
-        plt.scatter(np.broadcast_to(np.arange(self.t), (self.N, self.t)).T, self.history, alpha=0.1, color="black", s=1, label="Opinions")
+        plt.scatter(np.broadcast_to(np.arange(self.t + 1), (self.N, self.t + 1)).T, self.history, alpha=0.1, color="black", s=1, label="Opinions")
         plt.xlabel("Time Steps")
         plt.ylabel("Opinion")
         plt.title("Deffuant-Weisbuch Model Time Chart")
@@ -137,7 +147,23 @@ if __name__ == "__main__":
     # full = DeffuantWeisbuchModel(15, .2, .5, 50, "full")
     # random = DeffuantWeisbuchModel(15, .2, .5, 50, "random")
     # scale_free = DeffuantWeisbuchModel(15, .2, .5, 50, "scale-free")
-    net = DeffuantWeisbuchModel(1000, .23, .46, 100, "full", num_of_data_points=2)
-    net.run()
-    net.export_data()
+    # net = DeffuantWeisbuchModel(1000, .35, .5, 30000, "net")
+    # net.run()
+    # breakpoint()
+    # net.plot_time_chart()
+
+
+    # model = DeffuantWeisbuchModel(1000, .23, .46, 100, "full", num_of_data_points=2)
+    # model.run()
+    # model.export_data()
+
+    model_slow = DeffuantWeisbuchModel(1000, 0.3, 0.01, 10000, "full")
+    model_medium = DeffuantWeisbuchModel(1000, 0.3, 0.03, 1000, "full")
+    model_fast = DeffuantWeisbuchModel(1000, 0.3, 0.1, 250, "full")
+    model_slow.run()
+    model_medium.run()
+    model_fast.run()
+    model_slow.plot_time_chart()
+    model_medium.plot_time_chart()
+    model_fast.plot_time_chart()
     
