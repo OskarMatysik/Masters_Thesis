@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from models import DeffuantWeisbuchModel
 
 
-def run_parameter_sweep(N: int = 1000, topology: str = "full", t: int = None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def run_parameter_sweep(N: int = 1000, topology: str = "full") -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Run DeffuantWeisbuchModel for each pair of parameters d and mu.
     Parameters range from 0 to 0.5 with 0.05 step.
@@ -17,7 +17,7 @@ def run_parameter_sweep(N: int = 1000, topology: str = "full", t: int = None) ->
         Tuple of (parameters array, entropy_matrix, std_matrix)
         where parameters are in shape (11,) for values [0, 0.05, ..., 0.5]
     """
-    params = np.arange(0, 0.55, 0.05)
+    params = np.arange(0.05, 0.55, 0.05)
     entropy_matrix = np.zeros((len(params), len(params)))
     std_matrix = np.zeros((len(params), len(params)))
     
@@ -28,7 +28,7 @@ def run_parameter_sweep(N: int = 1000, topology: str = "full", t: int = None) ->
         for j, mu in enumerate(params):
             run_count += 1
             print(f"Running {run_count}/{total_runs}: d={d:.2f}, mu={mu:.2f}")
-            
+            t = int(10 * (3 + 1/mu))
             model = DeffuantWeisbuchModel(N=N, d=d, mu=mu, t=t, topology=topology)
             model.run()
             std, _, _, entropy = model.statistics()

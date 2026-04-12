@@ -18,7 +18,7 @@ class MultiDW:
         self.chunks = [np.arange(num_of_runs)[i::num_of_cores] for i in range(num_of_cores)]
         self.snapshots = snapshots
 
-    def run(self) -> None:
+    def run(self):
         """Run the model given number of times and save the results."""
         with Pool(self.num_of_cores) as pool:
             results = pool.map(self._mapper, [chunk for chunk in self.chunks])

@@ -179,7 +179,7 @@ class GA1Calibration:
         """Plot the best fitness values over iterations and save to file."""
         plt.figure(figsize=(10, 6))
         plt.plot(self.best)
-        plt.axhline(y=0.75, color='r', linestyle='--', label='Stop Fitness')
+        plt.axhline(y=self.stop_fitness, color='r', linestyle='--', label='Stop Fitness')
         plt.xlabel("Iteration")
         plt.ylabel("Best Fitness")
         plt.title(f"Best Fitness Over Iterations - {self.name}")
@@ -440,7 +440,7 @@ class GA2Calibration:
         """Plot the best fitness values over iterations and save to file."""
         plt.figure(figsize=(10, 6))
         plt.plot(self.best)
-        plt.axhline(y=0.75, color='r', linestyle='--', label='Stop Fitness')
+        plt.axhline(y=self.stop_fitness, color='r', linestyle='--', label='Stop Fitness')
         plt.xlabel("Iteration")
         plt.ylabel("Best Fitness")
         plt.title(f"Best Fitness Over Iterations - {self.name}")
@@ -454,30 +454,30 @@ if __name__ == "__main__":
     calibration = GA1Calibration(
             o_name="o_N1000_d0.23_mu0.46_full", 
             num_of_params=2, 
-            pop_size=25, 
+            pop_size=50, 
             p_c=0.7,
             p_m=0.1, 
-            max_iter=50, 
-            stop_fitness=0.9, 
+            max_iter=30, 
+            stop_fitness=0.95, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.005, 
             topology="full", 
-            num_of_simulations=5,
+            num_of_simulations=15,
             log=True
         )
     calibration_2 = GA2Calibration(
             o_name="o_N1000_d0.23_mu0.46_full", 
             num_of_params=2, 
-            pop_size=100, 
+            pop_size=50, 
             p_c=0.7,
             p_m=0.1, 
-            max_iter=50, 
+            max_iter=30, 
             stop_fitness=0.95, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.005, 
-            num_of_simulations=5,           
+            num_of_simulations=15,           
             topology="full", 
             beta=6,
             gamma_L=2,
@@ -485,9 +485,9 @@ if __name__ == "__main__":
             alpha=0.2,
             log=True
         )
-    # calibration.run()
-    # calibration.export_result()
-    # calibration.plot_best()
+    calibration.run()
+    calibration.export_result()
+    calibration.plot_best()
     # calibration._loss_test()
     calibration_2.run()
     calibration_2.export_result()

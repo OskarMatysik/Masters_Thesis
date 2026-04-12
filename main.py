@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from src.models import *
-from src.calibration import GA1Calibration
+from src.calibration_GA import GA1Calibration
 
 
 def create_catalog_structure():
