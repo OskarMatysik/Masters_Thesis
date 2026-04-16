@@ -6,7 +6,7 @@ import pandas as pd
 
 class GridSearchCalibration:
     def __init__(self, o_name: str, d_bounds: list, mu_bounds: list, grid_size:int, num_of_simulations: int, 
-                 topology: str = "full", log: bool = False):
+                 topology: str = "full", log: bool = False, max_iter: int = 1000):
         
         self.name = o_name
         self.t, self.y_real = self._read_opinions(o_name)
@@ -18,6 +18,7 @@ class GridSearchCalibration:
         self.log = log
         self.d_grid, self.mu_grid = self._generate_grid()
         self.fitness_grid = np.zeros_like(self.d_grid)
+        self.max_iter = max_iter
 
     def _read_opinions(self, o_name: str) -> np.ndarray:
         """Read the opinions from the file.
@@ -58,21 +59,89 @@ class GridSearchCalibration:
         
         return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
     
-class SimulatedAnnealingCalibration(GridSearchCalibration):
-    def __init__(self, o_name: str, d_bounds: list, mu_bounds: list, initial_temp: float, cooling_rate: float, num_of_simulations: int, topology: str = "full", log: bool = False):
-        super().__init__(o_name, d_bounds, mu_bounds, grid_size=0, num_of_simulations=num_of_simulations, topology=topology, log=log)
+class SimulatedAnnealingCalibration():
+    def __init__(self, o_name: str, d_bounds: list, mu_bounds: list, initial_temp: float, cooling_rate: float, 
+                 num_of_simulations: int, max_iter: int, param_range: float = 0.05, topology: str = "full", log: bool = False):
+        self.name = o_name
+        self.t, self.y_real = self._read_opinions(o_name)
+        self.d_bounds = d_bounds
+        self.mu_bounds = mu_bounds
+        self.num_of_simulations = num_of_simulations
+        self.topology = topology
+        self.log = log
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
+        self.max_iter = max_iter
+        self.param_range = param_range
+
+    def _read_opinions(self, o_name: str) -> np.ndarray:
+        """Read the opinions from the file.
+        o_name (str): Name of the opinion file."""
+        df = pd.read_csv(f"results/{o_name}.csv", header=0)
+        t = np.array(df.columns, dtype=int)
+        return t, np.sort(df.to_numpy(), axis=0).T
+
+    def run(self):
+        """Run the simulated annealing calibration process."""
+        current_d = np.random.uniform(self.d_bounds[0], self.d_bounds[1])
+        current_mu = np.random.uniform(self.mu_bounds[0], self.mu_bounds[1])
+        sim = MultiDW(N=self.y_real.shape[1], d=current_d, mu=current_mu, t=max(self.t), topology=self.topology, num_of_runs=self.num_of_simulations, snapshots=self.t)
+        entropy = sim.run()[-1]
+        max_fitness = self._fitness(entropy)
+        temp = self.initial_temp
+        if self.log:
+            print(f"Iteration {1}, Temp: {temp:.4f}, Current Fitness: {max_fitness:.4f}")
+
+        for i in range(1, self.max_iter):
+            d = np.clip(current_d + np.random.normal(0, self.param_range), self.d_bounds[0], self.d_bounds[1])
+            mu = np.clip(current_mu + np.random.normal(0, self.param_range), self.mu_bounds[0], self.mu_bounds[1])
+            if self.log:
+                print(f"Iteration {i+1}, Temp: {temp:.4f}, Current Fitness: {max_fitness:.4f}")
+            sim = MultiDW(N=self.y_real.shape[1], d=d, mu=mu, t=max(self.t), topology=self.topology, num_of_runs=self.num_of_simulations, snapshots=self.t)
+            entropy = sim.run()[-1]
+            fitness = self._fitness(entropy)
+            if fitness > max_fitness or np.random.rand() < np.exp((fitness - max_fitness) / temp):
+                current_d, current_mu, max_fitness = d, mu, fitness
+            
+            temp *= self.cooling_rate
+        breakpoint()
+
+    def _fitness(self, entropy_pred: list) -> float:
+        """
+        Calculate fitness based on MSE between real and predicted CDFs for single simulation.
+        y_pred (np.ndarray): Predicted opinions for the given time steps.
+        
+        1. ecdf approach - failed (add y_pred: np.ndarray = None to work)
+        2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
+        3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
+        """
+
+        entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
+        entropy_pred = np.array(entropy_pred)
+        
+        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
 
     
         
 if __name__ == "__main__":
-    cal = GridSearchCalibration(
+    # cal = GridSearchCalibration(
+    #     o_name = "o_N1000_d0.23_mu0.46_full",
+    #     d_bounds = [0.1, 0.5],
+    #     mu_bounds = [0.1, 0.5],
+    #     grid_size = 15,
+    #     num_of_simulations = 5,
+    #     topology = "full",
+    #     log = True 
+    #     )
+    cal = SimulatedAnnealingCalibration(
         o_name = "o_N1000_d0.23_mu0.46_full",
         d_bounds = [0.1, 0.5],
         mu_bounds = [0.1, 0.5],
-        grid_size = 15,
+        initial_temp = 1,
+        cooling_rate = 0.95,
         num_of_simulations = 5,
+        max_iter = 100,
+        param_range = 0.01,
         topology = "full",
         log = True 
         )
