@@ -189,7 +189,7 @@ if __name__ == "__main__":
         pool_size = 1000,
         sample_size = 20,
         max_iter = 10,
-        surrogate = "GBR",
+        surrogate = "XGB",
         sampling_method = "Sobol",
         stop_fitness = 0.95,
         num_of_simulations = 5,
