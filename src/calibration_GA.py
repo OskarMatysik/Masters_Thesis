@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import ecdf, differential_entropy
+from time import time
 
 class GA1Calibration:
     """Genetic algorithm calibration using the Deffuant–Weisbuch model.
@@ -13,7 +14,7 @@ class GA1Calibration:
     """
     def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, 
                  max_iter: int, stop_fitness: float, L_p: float, U_p: float, mutation_range: float, 
-                 topology: str, num_of_simulations: int, log: bool = False) -> None:
+                 topology: str, num_of_simulations: int, real_d: float, real_mu: float, log: bool = False) -> None:
         """Initialize the GA1 calibration.
 
         Args:
@@ -29,10 +30,11 @@ class GA1Calibration:
             mutation_range (float): Variance used to compute mutation standard deviation.
             topology (str): Network topology for the model simulations.
             num_of_simulations (int): Number of simulation runs used per chromosome.
+            real_d (float): Real value for parameter d.
+            real_mu (float): Real value for parameter mu.
             log (bool): If True, print progress updates during optimization.
         """
         self.name = o_name
-        self.t, self.y_real = self._read_opinions(o_name)
         self.num_of_params = num_of_params
         self.pop_size = pop_size
         self.p_c = p_c
@@ -41,14 +43,23 @@ class GA1Calibration:
         self.stop_fitness = stop_fitness
         self.L_p = L_p
         self.U_p = U_p
-        self.topology = topology
         self.mutation_range = np.sqrt(mutation_range) # standard deviation instead of variance
+        self.topology = topology
         self.num_of_simulations = num_of_simulations
+        self.real_d = real_d
+        self.real_mu = real_mu
         self.log = log
+
+        self.t, self.y_real = self._read_opinions(o_name)
         self.result = None
         self.fitness = None
         self.best = []
         self.t_converged = None
+
+        self.total_time = None
+        self.abm_calls = 0
+        self.prediction_error = None
+
 
     def _read_opinions(self, o_name: str) -> np.ndarray:
         """Read the opinions from the file.
@@ -57,6 +68,7 @@ class GA1Calibration:
         t = np.array(df.columns, dtype=int)
         return t, np.sort(df.to_numpy(), axis=0).T
     
+
     def _fitness(self, entropy_pred: list) -> float:
         """
         Calculate fitness based on MSE between real and predicted CDFs for single simulation.
@@ -105,6 +117,7 @@ class GA1Calibration:
         population = np.vstack(parameters)
         return population
     
+
     def _crossover(self, parents):
         """Perform crossover for 2 chosen chromosomes."""
         gene = np.random.choice(self.num_of_params)
@@ -114,8 +127,10 @@ class GA1Calibration:
         chromosome_2[gene] = chromosome_2[gene] * ratio + chromosome_1[gene] * (1 - ratio)
         return chromosome_2, chromosome_2
     
+
     def run(self) -> None:
         """Run the genetic algorithm to calibrate the model."""
+        start_time = time()
         new_population = self._init_population()
         i = 0
         fitness_values = np.zeros(self.pop_size)
@@ -127,6 +142,7 @@ class GA1Calibration:
             for chr_id, chromosome in enumerate(population):
 
                 multi_model = MultiDW(self.num_of_simulations, N=np.shape(self.y_real)[1], d=chromosome[0], mu=chromosome[1], t=max(self.t), topology=self.topology, snapshots=self.t)
+                self.abm_calls += self.num_of_simulations
                 entropy_pred = multi_model.run()[-1]
                 fitness_values[chr_id] = self._fitness(entropy_pred)
 
@@ -163,18 +179,34 @@ class GA1Calibration:
         
         self.fitness = fitness_values
         self.result = population
+        self.total_time = time() - start_time
+        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
 
 
-    def export_result(self):
+    def export_final_params(self):
         """Export result to csv."""
         df = pd.DataFrame()
         for i in range(self.num_of_params):
             df[f"parameter_{i}"] = self.result[:, i]
         df["fitness"] = self.fitness
         df.sort_values(by=["fitness"], ascending=False)
-        df.to_csv(f"results/GA1_calibration_{self.name}.csv")
+        df.to_csv(f"results/GA1_calibration_{self.name}.csv", index=False)
+
+
+    def export_calibration_results(self):
+        """Return calibration results to csv file."""
+        df = pd.DataFrame({
+            "d": self.result[np.argmax(self.fitness), 0],
+            "mu": self.result[np.argmax(self.fitness), 1],
+            "fitness": max(self.fitness),
+            "prediction_error": self.prediction_error,
+            "total_time": self.total_time,
+            "abm_calls": self.abm_calls,
+            "t_converged": self.t_converged
+        })
+        df.to_csv(f"results/GA1_{self.name}.csv", index=False)
         
-        
+
     def plot_best(self):
         """Plot the best fitness values over iterations and save to file."""
         plt.figure(figsize=(10, 6))
@@ -187,61 +219,14 @@ class GA1Calibration:
         plt.legend()
         plt.savefig(f"results/GA1_calibration_{self.name}.png", dpi=300, bbox_inches='tight')
         plt.close()
-    
-    def _loss_test(self):
-        num_trajectories = 10
-        trajectories = []
-        
-        # Generate 10 trajectories
-        for _ in range(num_trajectories//2):
-            model = DeffuantWeisbuchModel(N=np.shape(self.y_real)[1], d=0.23, mu=0.46, t=max(self.t), topology=self.topology)
-            model.run()
-            y_pred = np.sort(np.array([model.history[t] for t in self.t]), axis=1)
-            trajectories.append(y_pred)
-        
-        for _ in range(num_trajectories//2):
-            model = DeffuantWeisbuchModel(N=np.shape(self.y_real)[1], d=0.13, mu=0.36, t=max(self.t), topology=self.topology)
-            model.run()
-            y_pred = np.sort(np.array([model.history[t] for t in self.t]), axis=1)
-            trajectories.append(y_pred)
-        
-        # Create 5 subplots comparing CDF of trajectories with y_real
-        num_subplots = min(5, len(self.t))
-        fig, axes = plt.subplots(num_subplots, 1, figsize=(10, 3*num_subplots))
-        
-        if num_subplots == 1:
-            axes = [axes]
-        
-        # Create x values for CDF evaluation
-        x_eval = np.linspace(0, 1, 200)
-        
-        for idx in range(num_subplots):
-            time_idx = idx * (len(self.t) - 1) // max(1, num_subplots - 1) if num_subplots > 1 else idx
-            
-            # Plot CDF for all trajectories
-            for traj_id, y_pred in enumerate(trajectories):
-                # Compute empirical CDF
-                sorted_data = np.sort(y_pred[time_idx])
-                cdf_values = np.searchsorted(sorted_data, x_eval, side='right') / len(sorted_data)
-                if traj_id == 0:
-                    axes[idx].plot(x_eval, cdf_values, alpha=0.3, linewidth=1, label='CDF (trajectories)')
-                else:
-                    axes[idx].plot(x_eval, cdf_values, alpha=0.3, linewidth=1)
-            
-            # Plot CDF for real data
-            sorted_real = np.sort(self.y_real[time_idx])
-            cdf_real = np.searchsorted(sorted_real, x_eval, side='right') / len(sorted_real)
-            axes[idx].plot(x_eval, cdf_real, label='CDF (real)', alpha=0.8, linewidth=2.5, color='red')
-            
-            axes[idx].set_xlabel("Opinion")
-            axes[idx].set_ylabel("Cumulative Probability")
-            axes[idx].set_title(f"Opinion Distribution (CDF) at t={self.t[time_idx]}")
-            axes[idx].legend()
-            axes[idx].grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        plt.savefig(f"results/GA1_loss_test_{self.name}.png", dpi=300, bbox_inches='tight')
-        plt.close()
+
+
+    def calibration_results(self):
+        """Print the best parameters and fitness after calibration."""
+        best_idx = np.argmax(self.fitness)
+        best_params = self.result[best_idx]
+        best_fitness = self.fitness[best_idx]
+        print(f"Best Parameters: {best_params}, Best Fitness: {best_fitness}")
         
 
 class GA2Calibration:
@@ -252,7 +237,8 @@ class GA2Calibration:
     """
     def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, max_iter: int,
                  stop_fitness: float, L_p: float, U_p: float, mutation_range: float, num_of_simulations: int,
-                 topology: str, beta: int, gamma_L: float, gamma_U: float, alpha: float, log: bool = False) -> None:
+                 topology: str, real_d: float, real_mu: float, beta: int, gamma_L: float, gamma_U: float, 
+                 alpha: float, log: bool = False) -> None:
         """Initialize the GA2 calibration.
 
         Args:
@@ -275,7 +261,6 @@ class GA2Calibration:
             log (bool): If True, print progress updates during optimization.
         """
         self.name = o_name
-        self.t, self.y_real = self._read_opinions(o_name)
         self.num_of_params = num_of_params
         self.pop_size = pop_size
         self.p_c = p_c
@@ -284,19 +269,27 @@ class GA2Calibration:
         self.stop_fitness = stop_fitness
         self.L_p = L_p
         self.U_p = U_p
-        self.topology = topology
         self.mutation_range = np.sqrt(mutation_range) # standard deviation instead of variance
         self.num_of_simulations = num_of_simulations
+        self.topology = topology
+        self.beta = beta
+        self.gamma_L = gamma_L
+        self.gamma_U = gamma_U
+        self.alpha = alpha 
         self.log = log
+        self.real_d = real_d
+        self.real_mu = real_mu
+
+        self.t, self.y_real = self._read_opinions(o_name)
         self.result = None
         self.fitness = None
         self.best = []
         self.t_converged = None
-        self.beta = beta
-        self.gamma_L = gamma_L
-        self.gamma_U = gamma_U
         self.gamma_t = gamma_U
-        self.alpha = alpha           
+
+        self.total_time = None
+        self.abm_calls = 0
+        self.prediction_error = None
         
     def _read_opinions(self, o_name: str) -> np.ndarray:
         """Read the opinions from the file.
@@ -314,23 +307,6 @@ class GA2Calibration:
         2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
         3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
         """
-
-        # cdf_mse_values = []
-        # x_eval = np.linspace(0, 1, 100)
-        
-        # for time_idx in range(len(self.t)):
-
-        #     ecdf_real = ecdf(self.y_real[time_idx])
-        #     ecdf_pred = ecdf(y_pred[time_idx])
-            
-        #     mse = np.sum((ecdf_real.cdf.evaluate(x_eval) - ecdf_pred.cdf.evaluate(x_eval)) ** 2)
-        #     cdf_mse_values.append(mse)
-        
-        # total_mse = np.sum(cdf_mse_values)
-        
-        # return 1 / (1 + total_mse)
-        
-
         entropy_real = np.array([differential_entropy(sample) for sample in self.y_real])
         entropy_pred = np.array(entropy_pred)
         diff = np.abs(entropy_real - entropy_pred)
@@ -359,6 +335,7 @@ class GA2Calibration:
     
     def run(self) -> None:
         """Run the genetic algorithm to calibrate the model."""
+        start_time = time()
         new_population = self._init_population()
         i = 0
         fitness_values = np.zeros(self.pop_size)
@@ -373,6 +350,7 @@ class GA2Calibration:
             for chr_id, chromosome in enumerate(population):
 
                 multi_model = MultiDW(self.num_of_simulations, N=np.shape(self.y_real)[1], d=chromosome[0], mu=chromosome[1], t=max(self.t), topology=self.topology, snapshots=self.t)
+                self.abm_calls += self.num_of_simulations
                 entropy_pred = multi_model.run()[-1]
                 fitness_values[chr_id] = self._fitness(entropy_pred)
             
@@ -424,17 +402,32 @@ class GA2Calibration:
         
         self.fitness = fitness_values
         self.result = population
+        self.total_time = time() - start_time
+        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
 
 
-    def export_result(self):
+    def export_final_params(self):
         """Export result to csv."""
         df = pd.DataFrame()
         for i in range(self.num_of_params):
             df[f"parameter_{i}"] = self.result[:, i]
         df["fitness"] = self.fitness
         df.sort_values(by=["fitness"], ascending=False)
-        df.to_csv(f"results/GA2_calibration_{self.name}.csv")
+        df.to_csv(f"results/GA2_calibration_{self.name}.csv", index=False)
         
+
+    def export_calibration_results(self):
+        """Return calibration results to csv file."""
+        df = pd.DataFrame({
+            "d": self.result[np.argmax(self.fitness), 0],
+            "mu": self.result[np.argmax(self.fitness), 1],
+            "fitness": max(self.fitness),
+            "prediction_error": self.prediction_error,
+            "total_time": self.total_time,
+            "abm_calls": self.abm_calls,
+            "t_converged": self.t_converged
+        })
+        df.to_csv(f"results/GA2_{self.name}.csv", index=False)
         
     def plot_best(self):
         """Plot the best fitness values over iterations and save to file."""
@@ -457,13 +450,15 @@ if __name__ == "__main__":
             pop_size=50, 
             p_c=0.7,
             p_m=0.1, 
-            max_iter=30, 
+            max_iter=2, 
             stop_fitness=0.95, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.005, 
             topology="full", 
-            num_of_simulations=15,
+            num_of_simulations=1,
+            real_d=0.23,
+            real_mu=0.46,
             log=True
         )
     calibration_2 = GA2Calibration(
@@ -472,24 +467,22 @@ if __name__ == "__main__":
             pop_size=50, 
             p_c=0.7,
             p_m=0.1, 
-            max_iter=30, 
+            max_iter=2, 
             stop_fitness=0.95, 
             L_p=[0, 0], 
             U_p=[0.5, 0.5], 
             mutation_range=0.005, 
-            num_of_simulations=15,           
+            num_of_simulations=1,           
             topology="full", 
             beta=6,
             gamma_L=2,
             gamma_U=10,
             alpha=0.2,
+            real_d=0.23,
+            real_mu=0.46,
             log=True
         )
     calibration.run()
-    calibration.export_result()
-    calibration.plot_best()
-    # calibration._loss_test()
+    calibration.export_calibration_results()
     calibration_2.run()
-    calibration_2.export_result()
-    calibration_2.plot_best()
-    # calibration_2._loss_test()
+    calibration_2.export_calibration_results()
