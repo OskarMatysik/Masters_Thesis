@@ -3,6 +3,7 @@ from scipy.stats import qmc
 import numpy as np
 import pandas as pd
 from scipy.stats import differential_entropy
+from time import time
 
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.ensemble import RandomForestRegressor
@@ -67,6 +68,11 @@ class MLSurrogateCalibration:
         self.fitness_estimation = []
         self.surrogate_model = self._init_surrogate_model(surrogate)
         
+        self.total_time = None
+        self.abm_calls = 0
+        self.best_params = None
+        self.best_fitness = None
+        
 
 
     def _read_opinions(self, o_name: str) -> np.ndarray:
@@ -79,6 +85,7 @@ class MLSurrogateCalibration:
 
     def run(self):
         """Run the surrogate calibration process."""
+        start_time = time()
         for i in range(self.max_iter):
             if self.log:
                 print(f"Iteration {i+1}/{self.max_iter}")
@@ -96,6 +103,12 @@ class MLSurrogateCalibration:
                 if self.log:
                     print(f"Stopping early at iteration {i+1} with max fitness {np.max(fitness_pred):.4f}")
                 break
+        
+        # Store best parameters and fitness
+        best_idx = np.argmax(self.y_train)
+        self.best_params = np.array(self.x_train[best_idx])
+        self.best_fitness = self.y_train[best_idx]
+        self.total_time = time() - start_time
 
             
 
@@ -160,6 +173,7 @@ class MLSurrogateCalibration:
                 topology = self.topology,
                 snapshots = self.t
                 )
+            self.abm_calls += self.num_of_simulations
             entropy = model.run()[-1]
             self.x_train.append((d, mu))
             self.y_train.append(self._fitness(entropy))
@@ -179,8 +193,17 @@ class MLSurrogateCalibration:
         entropy_pred = np.array(entropy_pred)
         
         return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
-
-
+    
+    def export_calibration_results(self):
+        """Export calibration results to csv file."""
+        df = pd.DataFrame({
+            "d": [self.best_params[0]],
+            "mu": [self.best_params[1]],
+            "fitness": [self.best_fitness],
+            "total_time": [self.total_time],
+            "abm_calls": [self.abm_calls]
+        })
+        df.to_csv(f"results/MLSurrogate_{self.o_name}_{self.surrogate}.csv", index=False)
 
 
 if __name__ == "__main__":
@@ -197,5 +220,6 @@ if __name__ == "__main__":
         log = True 
         )
     cal.run()
-    breakpoint()
+    cal.export_calibration_results()
+    # breakpoint()
 
