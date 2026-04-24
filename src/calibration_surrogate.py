@@ -1,4 +1,4 @@
-from multiple_runs import MultiDW
+from .multiple_runs import MultiDW
 from scipy.stats import qmc
 import numpy as np
 import pandas as pd

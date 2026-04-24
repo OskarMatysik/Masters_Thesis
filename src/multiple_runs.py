@@ -1,4 +1,4 @@
-from models import *
+from .models import *
 from multiprocessing import Pool
 from time import time
 import numpy as np

@@ -1,5 +1,5 @@
 import numpy as np
-from multiple_runs import MultiDW
+from .multiple_runs import MultiDW
 from scipy.stats import differential_entropy
 import pandas as pd
 from time import time

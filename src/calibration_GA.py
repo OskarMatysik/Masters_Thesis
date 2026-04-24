@@ -1,5 +1,5 @@
-from models import DeffuantWeisbuchModel
-from multiple_runs import MultiDW
+from .models import DeffuantWeisbuchModel
+from .multiple_runs import MultiDW
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
