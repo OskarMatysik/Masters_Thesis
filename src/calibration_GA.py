@@ -14,7 +14,7 @@ class GA1Calibration:
     """
     def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, 
                  max_iter: int, stop_fitness: float, L_p: float, U_p: float, mutation_range: float, 
-                 topology: str, num_of_simulations: int, real_d: float, real_mu: float, log: bool = False) -> None:
+                 topology: str, num_of_simulations: int, d_real: float, mu_real: float, log: bool = False) -> None:
         """Initialize the GA1 calibration.
 
         Args:
@@ -46,8 +46,8 @@ class GA1Calibration:
         self.mutation_range = np.sqrt(mutation_range) # standard deviation instead of variance
         self.topology = topology
         self.num_of_simulations = num_of_simulations
-        self.real_d = real_d
-        self.real_mu = real_mu
+        self.d_real = d_real
+        self.mu_real = mu_real
         self.log = log
 
         self.t, self.y_real = self._read_opinions(o_name)
@@ -180,7 +180,7 @@ class GA1Calibration:
         self.fitness = fitness_values
         self.result = population
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
+        self.prediction_error = np.abs(np.array([self.d_real, self.mu_real]) - self.result[np.argmax(self.fitness)])
 
 
     def export_final_params(self):
@@ -202,7 +202,6 @@ class GA1Calibration:
             "prediction_error": self.prediction_error,
             "total_time": self.total_time,
             "abm_calls": self.abm_calls,
-            "t_converged": self.t_converged
         })
         df.to_csv(f"results/GA1_{self.name}.csv", index=False)
         
@@ -237,7 +236,7 @@ class GA2Calibration:
     """
     def __init__(self, o_name: str, num_of_params:int, pop_size: int, p_c: float, p_m: float, max_iter: int,
                  stop_fitness: float, L_p: float, U_p: float, mutation_range: float, num_of_simulations: int,
-                 topology: str, real_d: float, real_mu: float, beta: int, gamma_L: float, gamma_U: float, 
+                 topology: str, d_real: float, mu_real: float, beta: int, gamma_L: float, gamma_U: float, 
                  alpha: float, log: bool = False) -> None:
         """Initialize the GA2 calibration.
 
@@ -277,8 +276,8 @@ class GA2Calibration:
         self.gamma_U = gamma_U
         self.alpha = alpha 
         self.log = log
-        self.real_d = real_d
-        self.real_mu = real_mu
+        self.d_real = d_real
+        self.mu_real = mu_real
 
         self.t, self.y_real = self._read_opinions(o_name)
         self.result = None
@@ -403,7 +402,7 @@ class GA2Calibration:
         self.fitness = fitness_values
         self.result = population
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
+        self.prediction_error = np.abs(np.array([self.d_real, self.mu_real]) - self.result[np.argmax(self.fitness)])
 
 
     def export_final_params(self):
@@ -425,7 +424,6 @@ class GA2Calibration:
             "prediction_error": self.prediction_error,
             "total_time": self.total_time,
             "abm_calls": self.abm_calls,
-            "t_converged": self.t_converged
         })
         df.to_csv(f"results/GA2_{self.name}.csv", index=False)
         

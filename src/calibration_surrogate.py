@@ -23,8 +23,8 @@ class MLSurrogateCalibration:
     """
 
     def __init__(self, o_name: str, pool_size: int, sample_size: int, max_iter: int, 
-                surrogate: str, sampling_method: str = "Sobol", stop_fitness: float = 0.95,
-                 num_of_simulations: int = 50, topology: str = "full", log: bool = False):
+                surrogate: str, d_real: float, mu_real: float, sampling_method: str = "Sobol", 
+                stop_fitness: float = 0.95, num_of_simulations: int = 50, topology: str = "full", log: bool = False):
         """Initialize the MLSurrogateCalibration instance.
         
         Parameters
@@ -55,6 +55,8 @@ class MLSurrogateCalibration:
         self.stop_fitness = stop_fitness
         self.num_of_simulations = num_of_simulations
         self.topology = topology
+        self.d_real = d_real
+        self.mu_real = mu_real
         self.log = log
 
         self.d_bounds = [0.001, 0.601]
@@ -72,6 +74,7 @@ class MLSurrogateCalibration:
         self.abm_calls = 0
         self.best_params = None
         self.best_fitness = None
+        self.prediction_error = None
         
 
 
@@ -103,14 +106,13 @@ class MLSurrogateCalibration:
                 if self.log:
                     print(f"Stopping early at iteration {i+1} with max fitness {np.max(fitness_pred):.4f}")
                 break
-        
-        # Store best parameters and fitness
+
         best_idx = np.argmax(self.y_train)
         self.best_params = np.array(self.x_train[best_idx])
         self.best_fitness = self.y_train[best_idx]
         self.total_time = time() - start_time
+        self.prediction_error = np.abs(np.array([self.d_real, self.mu_real]) - self.best_params)
 
-            
 
     def _init_pool(self):
         """Generate a large pool of parameters.
@@ -200,6 +202,7 @@ class MLSurrogateCalibration:
             "d": [self.best_params[0]],
             "mu": [self.best_params[1]],
             "fitness": [self.best_fitness],
+            "prediction_error": [self.prediction_error],
             "total_time": [self.total_time],
             "abm_calls": [self.abm_calls]
         })

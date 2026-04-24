@@ -7,24 +7,26 @@ from time import time
 
 class GridSearchCalibration:
     def __init__(self, o_name: str, d_bounds: list, mu_bounds: list, grid_size:int, num_of_simulations: int, 
-                 topology: str = "full", log: bool = False, max_iter: int = 1000):
-        
+                real_d: float, real_mu: float, topology: str = "full", log: bool = False):
         self.name = o_name
-        self.t, self.y_real = self._read_opinions(o_name)
         self.d_bounds = d_bounds
         self.mu_bounds = mu_bounds
         self.grid_size = grid_size
         self.num_of_simulations = num_of_simulations
+        self.real_d = real_d
+        self.real_mu = real_mu
         self.topology = topology
         self.log = log
+
+        self.t, self.y_real = self._read_opinions(o_name)
         self.d_grid, self.mu_grid = self._generate_grid()
         self.fitness_grid = np.zeros_like(self.d_grid)
-        self.max_iter = max_iter
-        
+
         self.total_time = None
         self.abm_calls = 0
         self.best_params = None
         self.best_fitness = None
+        self.prediction_error = None
 
     def _read_opinions(self, o_name: str) -> np.ndarray:
         """Read the opinions from the file.
@@ -52,11 +54,11 @@ class GridSearchCalibration:
             fitness = self._fitness(entropy)
             self.fitness_grid[i] = fitness
         
-        # Store best parameters and fitness
         best_idx = np.argmax(self.fitness_grid)
         self.best_params = np.array([self.d_grid[best_idx], self.mu_grid[best_idx]])
         self.best_fitness = self.fitness_grid[best_idx]
         self.total_time = time() - start_time
+        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
 
     def _fitness(self, entropy_pred: list) -> float:
         """
@@ -79,6 +81,7 @@ class GridSearchCalibration:
             "d": [self.best_params[0]],
             "mu": [self.best_params[1]],
             "fitness": [self.best_fitness],
+            "prediction_error": [self.prediction_error],
             "total_time": [self.total_time],
             "abm_calls": [self.abm_calls]
         })
@@ -86,7 +89,8 @@ class GridSearchCalibration:
     
 class SimulatedAnnealingCalibration():
     def __init__(self, o_name: str, d_bounds: list, mu_bounds: list, initial_temp: float, cooling_rate: float, 
-                 num_of_simulations: int, max_iter: int, param_range: float = 0.05, topology: str = "full", log: bool = False):
+                 num_of_simulations: int, max_iter: int, real_d: float, real_mu: float, param_range: float = 0.05, 
+                 topology: str = "full", log: bool = False):
         self.name = o_name
         self.t, self.y_real = self._read_opinions(o_name)
         self.d_bounds = d_bounds
@@ -98,11 +102,14 @@ class SimulatedAnnealingCalibration():
         self.cooling_rate = cooling_rate
         self.max_iter = max_iter
         self.param_range = param_range
-        
+        self.real_d = real_d
+        self.real_mu = real_mu
+
         self.total_time = None
         self.abm_calls = 0
         self.best_params = None
         self.best_fitness = None
+        self.prediction_error = None
 
     def _read_opinions(self, o_name: str) -> np.ndarray:
         """Read the opinions from the file.
@@ -138,10 +145,10 @@ class SimulatedAnnealingCalibration():
             
             temp *= self.cooling_rate
         
-        # Store best parameters and fitness
         self.best_params = np.array([current_d, current_mu])
         self.best_fitness = max_fitness
         self.total_time = time() - start_time
+        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
 
     def _fitness(self, entropy_pred: list) -> float:
         """
@@ -164,8 +171,9 @@ class SimulatedAnnealingCalibration():
             "d": [self.best_params[0]],
             "mu": [self.best_params[1]],
             "fitness": [self.best_fitness],
+            "prediction_error": [self.prediction_error],
             "total_time": [self.total_time],
-            "abm_calls": [self.abm_calls]
+            "abm_calls": [self.abm_calls],
         })
         df.to_csv(f"results/SA_{self.name}.csv", index=False)
 
