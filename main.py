@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+from tasks import *
 
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -39,12 +40,79 @@ def create_catalog_structure():
 
 
 if __name__ == "__main__":
+    # Dataset parameters
+    topologies = ["full"]
+    Ns = [1000, 10000, 100000]
+    ds = [0.1, 0.25, 0.4]
+    mus = [0.1, 0.25, 0.4]
+
+    # GA parameters
+    pcs = [0.5, 0.6, 0.7, 0.8, 0.9]
+    pms = [0.05, 0.1, 0.15, 0.2, 0.25]
+    mutation_ranges = [0.005, 0.01, 0.015, 0.02, 0.025]
+    pop_sizes = [10, 20, 30, 40, 50]
+
+    # SA parameters
+    cooling_rates = [0.85, 0.875, 0.9, 0.925, 0.95]
+
+    # ML Surrogate parameters
+    surrogates = ["GBR", "RFR", "MLP", "XGB"]
+    pool_sizes = [256, 512, 1024, 2048, 4096]
+    sample_sizes = [10, 20, 30, 40, 50]
+
+    # Global parameters
+    max_iter = 100
+    num_of_simulations = 20
+    number_of_runs = 5
+    stop_fitness = 0.95
+
     create_catalog_structure()
-    # model_2 = DeffuantWeisbuchModel(N=2000, d=0.2, mu=0.5, t=100, topology="scale-free")
-    # model_2.run()
-    # model_2.plot_time_chart()
-    # model_2.plot_final_vs_initial()
-    # model_2.statistics()
-    # calibration = GA1Calibration(o_name="o_N1000_d0.2_mu0.5", s_name="s_N1000_d0.2_mu0.5", p_c=0.8, p_m=0.1, max_iter=200, stop_fitness=0.01, L_p=0.1, U_p=0.9)
-    # breakpoint()
+
+    # Tasks
+    generate_datasets(topologies, Ns, ds, mus)
+    task_calibration_GA1(o_names = o_names,
+                         pcs = pcs,
+                         pms = pms,
+                         mutation_ranges = mutation_ranges,
+                         pop_sizes = pop_sizes,
+                         number_of_runs = number_of_runs, 
+                         num_of_simulations = num_of_simulations, 
+                         max_iter = max_iter, 
+                         stop_fitness = stop_fitness
+                         )
+    task_calibration_GA2(o_names = o_names,
+                         pcs = pcs,
+                         pms = pms,
+                         mutation_ranges = mutation_ranges,
+                         pop_sizes = pop_sizes,
+                         number_of_runs = number_of_runs,
+                         num_of_simulations = num_of_simulations,
+                         max_iter = max_iter,
+                         stop_fitness = stop_fitness
+                         )
+    task_calibration_GS(o_names = o_names,
+                         d_bounds = [0.01, 0.5],
+                         mu_bounds = [0.01, 0.5],
+                         grid_size = 50,
+                         number_of_runs = number_of_runs,
+                         num_of_simulations = num_of_simulations)
+    task_calibration_SA(o_names = o_names,
+                         d_bounds = [0.01, 0.5],
+                         mu_bounds = [0.01, 0.5],
+                         cooling_rates = cooling_rates,
+                         number_of_runs = number_of_runs,
+                         num_of_simulations = num_of_simulations,
+                         max_iter = max_iter,
+                         stop_fitness = stop_fitness)
+    task_calibration_ML_surrogate(
+        o_names = o_names,
+        surrogates = surrogates,
+        pool_sizes = pool_sizes,
+        sample_sizes = sample_sizes,
+        number_of_runs = number_of_runs,
+        num_of_simulations = num_of_simulations,
+        max_iter = max_iter,
+        stop_fitness = stop_fitness
+    )
+
 

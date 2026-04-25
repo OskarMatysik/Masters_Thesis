@@ -58,7 +58,7 @@ class GridSearchCalibration:
         self.best_params = np.array([self.d_grid[best_idx], self.mu_grid[best_idx]])
         self.best_fitness = self.fitness_grid[best_idx]
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
+        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.best_params)
 
     def _fitness(self, entropy_pred: list) -> float:
         """
@@ -148,7 +148,7 @@ class SimulatedAnnealingCalibration():
         self.best_params = np.array([current_d, current_mu])
         self.best_fitness = max_fitness
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.result[np.argmax(self.fitness)])
+        self.prediction_error = np.abs(np.array([self.real_d, self.real_mu]) - self.best_params)
 
     def _fitness(self, entropy_pred: list) -> float:
         """
