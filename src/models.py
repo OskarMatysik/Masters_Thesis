@@ -1,11 +1,20 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import differential_entropy
 import networkx as nx
+import numpy as np
 import pandas as pd
+from scipy.stats import differential_entropy
+
 
 class DeffuantWeisbuchModel:
-    def __init__(self, N: int, d:float, mu:float, t:int | None = None, topology: str = "full", num_of_data_points: int | None = None) -> None:
+    def __init__(
+        self,
+        N: int,
+        d: float,
+        mu: float,
+        t: int,
+        topology: str = "full",
+        num_of_data_points: int | None = None,
+    ) -> None:
         """Parameters:
         N: Number of agents
         d: Disagreement threshold
@@ -15,7 +24,7 @@ class DeffuantWeisbuchModel:
         num_of_data_points: Number of data points to export to file (if None, export none)
         """
         if topology == "net":
-            self.N = int(np.ceil(np.sqrt(N))**2)
+            self.N = int(np.ceil(np.sqrt(N)) ** 2)
         else:
             self.N = N
         self.d = d
@@ -35,7 +44,10 @@ class DeffuantWeisbuchModel:
             while not self.converged:
                 sorted = np.sort(self.x)
                 distances = (np.roll(sorted, -1) - sorted)[:-1]
-                if not np.any(np.logical_and(distances <= self.d, distances >= 1e-2)) and len(self.history) > 20:
+                if (
+                    not np.any(np.logical_and(distances <= self.d, distances >= 1e-2))
+                    and len(self.history) > 20
+                ):
                     self.converged = True
                     self.t = len(self.history) + 1
                 self._step()
@@ -73,14 +85,19 @@ class DeffuantWeisbuchModel:
             for i in range(self.N):
                 row = i // size
                 col = i % size
-                neighbors = np.array([(col + c) % size + (row + r) % size * size for r in range(-1, 2) for c in range(-1, 2)])
+                neighbors = np.array(
+                    [
+                        (col + c) % size + (row + r) % size * size
+                        for r in range(-1, 2)
+                        for c in range(-1, 2)
+                    ]
+                )
                 M[i, neighbors] = 1
 
             return M - np.eye(self.N)
         else:
             raise ValueError("Invalid topology")
 
-                
     def _clusters(self, t: int | None = None) -> tuple[int, list]:
         """Calculate clusters of opinions. Return number of clusters and size of each cluster.
         Two agents are considered in the same cluster if their opinions differ by less than d/2.
@@ -110,28 +127,45 @@ class DeffuantWeisbuchModel:
             std = [float(np.std(self.history[t])) for t in snapshots]
             cluster_count = [self._clusters(t)[0] for t in snapshots]
             cluster_sizes = [self._clusters(t)[1] for t in snapshots]
-            entropy = [float(differential_entropy(self.history[t], method="vasicek")) for t in snapshots]
+            entropy = [
+                float(differential_entropy(self.history[t], method="vasicek"))
+                for t in snapshots
+            ]
         return std, cluster_count, cluster_sizes, entropy
-    
+
     def export_data(self) -> None:
         """Export opinions of agents at random time steps to a file."""
         if self.num_of_data_points is None:
             return
-        indices = np.sort(np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int))
-        data = pd.DataFrame(np.array([self.history[i] for i in indices]).T, columns=indices)
-        stats = pd.DataFrame([self.statistics()], columns=["std", "num_of_clusters", "cluster_sizes", "entropy"])
-        data.to_csv(f"results/o_N{self.N}_d{self.d}_mu{self.mu}_{self.topology}.csv", index=False)
-        # stats.to_csv(f"results/s_N{self.N}_d{self.d}_mu{self.mu}_{self.topology}.csv", index=False)
+        indices = np.sort(
+            np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int)
+        )
+        data = pd.DataFrame(
+            np.array([self.history[i] for i in indices]).T, columns=indices
+        )
+        data.to_csv(
+            f"results/o_N{self.N}_d{self.d}_mu{self.mu}_{self.topology}.csv",
+            index=False,
+        )
 
     def plot_time_chart(self) -> None:
         """Plot the time chart of opinions."""
         plt.figure(figsize=(10, 6))
-        plt.scatter(np.broadcast_to(np.arange(self.t + 1), (self.N, self.t + 1)).T, self.history, alpha=0.1, color="black", s=1, label="Opinions")
+        plt.scatter(
+            np.broadcast_to(np.arange(self.t + 1), (self.N, self.t + 1)).T,
+            self.history,
+            alpha=0.1,
+            color="black",
+            s=1,
+            label="Opinions",
+        )
         plt.xlabel("Time Steps")
         plt.ylabel("Opinion")
         plt.title("Deffuant-Weisbuch Model Time Chart")
         plt.legend()
-        plt.savefig(f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_time_chart.png")
+        plt.savefig(
+            f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_time_chart.png"
+        )
 
     def plot_final_vs_initial(self) -> None:
         """Plot the final opinions vs initial opinions."""
@@ -140,8 +174,10 @@ class DeffuantWeisbuchModel:
         plt.xlabel("Initial Opinion")
         plt.ylabel("Final Opinion")
         plt.title("Deffuant-Weisbuch Model: Final vs Initial Opinions")
-        plt.savefig(f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_final_init.png")
-        
+        plt.savefig(
+            f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_final_init.png"
+        )
+
 
 if __name__ == "__main__":
     # full = DeffuantWeisbuchModel(15, .2, .5, 50, "full")
@@ -151,7 +187,6 @@ if __name__ == "__main__":
     # net.run()
     # breakpoint()
     # net.plot_time_chart()
-
 
     # model = DeffuantWeisbuchModel(1000, .23, .46, 100, "full", num_of_data_points=2)
     # model.run()
@@ -166,4 +201,3 @@ if __name__ == "__main__":
     model_slow.plot_time_chart()
     model_medium.plot_time_chart()
     model_fast.plot_time_chart()
-    
