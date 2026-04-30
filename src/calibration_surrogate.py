@@ -1,18 +1,20 @@
 from time import time
+from typing import override
 
 import numpy as np
 import pandas as pd
-from scipy.stats import differential_entropy, qmc
+from scipy.stats import qmc
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
 from sklearn.neural_network import MLPRegressor
 from xgboost import XGBRegressor
 
+from .model import Model
 from .multiple_runs import MultiDW
 
 
-class MLSurrogateCalibration:
+class MLSurrogateCalibration(Model):
     """Machine Learning Surrogate Model for Calibration.
 
     This class uses machine learning models to build surrogate models for parameter calibration
@@ -24,13 +26,14 @@ class MLSurrogateCalibration:
     def __init__(
         self,
         o_name: str,
+        d_bounds: list[float],
+        mu_bounds: list[float],
         pool_size: int,
         sample_size: int,
         max_iter: int,
         surrogate: str,
-        d_real: float,
-        mu_real: float,
-        sampling_method: str = "Sobol",
+        real_d: float,
+        real_mu: float,
         stop_fitness: float = 0.95,
         num_of_simulations: int = 50,
         topology: str = "full",
@@ -48,8 +51,6 @@ class MLSurrogateCalibration:
             Number of samples to evaluate per iteration.
         max_iter : int
             Maximum number of iterations to run.
-        sampling_method : str, optional
-            Method for generating the parameter pool ('Sobol' or 'LHS'), by default "Sobol".
         num_of_simulations : int, optional
             Number of simulations to run for each parameter pair, by default 50.
         topology : str, optional
@@ -57,22 +58,23 @@ class MLSurrogateCalibration:
         log : bool, optional
             Whether to print iteration logs, by default False.
         """
-        self.o_name = o_name
+        super().__init__(
+            o_name=o_name,
+            d_bounds=d_bounds,
+            mu_bounds=mu_bounds,
+            num_of_simulations=num_of_simulations,
+            real_d=real_d,
+            real_mu=real_mu,
+            topology=topology,
+            log=log,
+        )
+
         self.pool_size = pool_size
         self.sample_size = sample_size
         self.max_iter = min(max_iter, self.pool_size // self.sample_size)
         self.surrogate = surrogate
-        self.sampling_method = sampling_method
         self.stop_fitness = stop_fitness
-        self.num_of_simulations = num_of_simulations
-        self.topology = topology
-        self.d_real = d_real
-        self.mu_real = mu_real
-        self.log = log
 
-        self.d_bounds = [0.001, 0.601]
-        self.mu_bounds = [0.001, 0.501]
-        self.t, self.y_real = self._read_opinions(o_name)
         self.N = np.shape(self.y_real)[1]
         self.pool = self._init_pool()
         self.samples_indices = self._init_samples()  # pre defined samples indices
@@ -81,19 +83,7 @@ class MLSurrogateCalibration:
         self.fitness_estimation = []
         self.surrogate_model = self._init_surrogate_model(surrogate)
 
-        self.total_time = None
-        self.abm_calls = 0
-        self.best_params = None
-        self.best_fitness = None
-        self.prediction_error = None
-
-    def _read_opinions(self, o_name: str) -> np.ndarray:
-        """Read the opinions from the file.
-        o_name (str): Name of the opinion file."""
-        df = pd.read_csv(f"results/{o_name}.csv", header=0)
-        t = np.array(df.columns, dtype=int)
-        return t, np.sort(df.to_numpy(), axis=0).T
-
+    @override
     def run(self):
         """Run the surrogate calibration process."""
         start_time = time()
@@ -102,7 +92,7 @@ class MLSurrogateCalibration:
                 print(f"Iteration {i + 1}/{self.max_iter}")
             samples = self.pool[self.samples_indices]
             self._calculate_fitness(samples)
-            self.surrogate_model.fit(self.x_train, self.y_train)
+            self.surrogate_model.fit(self.x_train, self.y_train)  # type: ignore
             # Predict fitness for the entire pool
             fitness_pred = self.surrogate_model.predict(self.pool)
             self.fitness_estimation.append(fitness_pred)
@@ -122,7 +112,7 @@ class MLSurrogateCalibration:
         self.best_fitness = self.y_train[best_idx]
         self.total_time = time() - start_time
         self.prediction_error = np.abs(
-            np.array([self.d_real, self.mu_real]) - self.best_params
+            np.array([self.real_d, self.real_mu]) - self.best_params
         )
 
     def _init_pool(self):
@@ -133,11 +123,7 @@ class MLSurrogateCalibration:
         method : str
             Method of generating the pool (LHS or Sobol)
         """
-        match self.sampling_method:
-            case "LHS":
-                sampler = qmc.LatinHypercube(2)
-            case "Sobol":
-                sampler = qmc.Sobol(2)
+        sampler = qmc.Sobol(2)
         pool = sampler.random(n=self.pool_size)
         return qmc.scale(
             pool,
@@ -178,6 +164,8 @@ class MLSurrogateCalibration:
                 return XGBRegressor(
                     objective="reg:squarederror", n_estimators=100, learning_rate=0.1
                 )
+            case _:
+                raise ValueError("invalid model provided")
 
     def _calculate_fitness(self, samples):
         for s in samples:
@@ -189,29 +177,12 @@ class MLSurrogateCalibration:
                 mu=mu,
                 t=max(self.t),
                 topology=self.topology,
-                snapshots=self.t,
+                snapshots=self.t.tolist(),
             )
             self.abm_calls += self.num_of_simulations
             entropy = model.run()[-1]
             self.x_train.append((d, mu))
             self.y_train.append(self._fitness(entropy))
-
-    def _fitness(self, entropy_pred: list) -> float:
-        """
-        Calculate fitness based on MSE between real and predicted CDFs for single simulation.
-        y_pred (np.ndarray): Predicted opinions for the given time steps.
-
-        1. ecdf approach - failed (add y_pred: np.ndarray = None to work)
-        2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
-        3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
-        """
-
-        entropy_real = np.array(
-            [differential_entropy(sample) for sample in self.y_real]
-        )
-        entropy_pred = np.array(entropy_pred)
-
-        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
 
     def export_calibration_results(self):
         """Export calibration results to csv file."""
@@ -225,24 +196,4 @@ class MLSurrogateCalibration:
                 "abm_calls": [self.abm_calls],
             }
         )
-        df.to_csv(
-            f"results/MLSurrogate_{self.o_name}_{self.surrogate}.csv", index=False
-        )
-
-
-if __name__ == "__main__":
-    cal = MLSurrogateCalibration(
-        o_name="o_N1000_d0.23_mu0.46_full",
-        pool_size=1000,
-        sample_size=20,
-        max_iter=10,
-        surrogate="XGB",
-        sampling_method="Sobol",
-        stop_fitness=0.95,
-        num_of_simulations=5,
-        topology="full",
-        log=True,
-    )
-    cal.run()
-    cal.export_calibration_results()
-    # breakpoint()
+        df.to_csv(f"results/MLSurrogate_{self.name}_{self.surrogate}.csv", index=False)

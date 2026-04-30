@@ -61,9 +61,7 @@ class DeffuantWeisbuchModel:
         """Perform one time step of the model. Each step consists of N interactions."""
         for _ in range(self.N // 2):
             i = np.random.choice(self.N)
-            # breakpoint()
             j = np.random.choice(np.argwhere(self.neighborhood[i]).flatten())
-            # i, j = np.random.choice(self.N, 2, replace=False)
             if np.abs(self.x[i] - self.x[j]) < self.d:
                 self.x[i] += self.mu * (self.x[j] - self.x[i])
                 self.x[j] += self.mu * (self.x[i] - self.x[j])
@@ -131,6 +129,7 @@ class DeffuantWeisbuchModel:
                 float(differential_entropy(self.history[t], method="vasicek"))
                 for t in snapshots
             ]
+
         return std, cluster_count, cluster_sizes, entropy
 
     def export_data(self) -> None:
@@ -177,27 +176,3 @@ class DeffuantWeisbuchModel:
         plt.savefig(
             f"single_simulations/deffuant_weisbuch/{self.topology}/N{self.N}_d{self.d}_mu{self.mu}_final_init.png"
         )
-
-
-if __name__ == "__main__":
-    # full = DeffuantWeisbuchModel(15, .2, .5, 50, "full")
-    # random = DeffuantWeisbuchModel(15, .2, .5, 50, "random")
-    # scale_free = DeffuantWeisbuchModel(15, .2, .5, 50, "scale-free")
-    # net = DeffuantWeisbuchModel(1000, .35, .5, 30000, "net")
-    # net.run()
-    # breakpoint()
-    # net.plot_time_chart()
-
-    # model = DeffuantWeisbuchModel(1000, .23, .46, 100, "full", num_of_data_points=2)
-    # model.run()
-    # model.export_data()
-
-    model_slow = DeffuantWeisbuchModel(1000, 0.3, 0.01, 10000, "full")
-    model_medium = DeffuantWeisbuchModel(1000, 0.3, 0.03, 1000, "full")
-    model_fast = DeffuantWeisbuchModel(1000, 0.3, 0.1, 250, "full")
-    model_slow.run()
-    model_medium.run()
-    model_fast.run()
-    model_slow.plot_time_chart()
-    model_medium.plot_time_chart()
-    model_fast.plot_time_chart()

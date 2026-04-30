@@ -125,7 +125,7 @@ def heatmaps_avg_GA1(file_names, stat_name):
         )
 
         # Add value labels on bars
-        for i, (bar, value) in enumerate(zip(bars, grouped.values)):
+        for bar, value in zip(bars, grouped.values):
             ax[idx].text(
                 bar.get_x() + bar.get_width() / 2,
                 bar.get_height(),

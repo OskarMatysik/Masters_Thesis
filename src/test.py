@@ -1,12 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from numpy.typing import NDArray
 
 from models import DeffuantWeisbuchModel
 
 
 def run_parameter_sweep(
     N: int = 1000, topology: str = "full"
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[NDArray, NDArray, NDArray]:
     """
     Run DeffuantWeisbuchModel for each pair of parameters d and mu.
     Parameters range from 0 to 0.5 with 0.05 step.

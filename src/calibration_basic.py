@@ -1,51 +1,43 @@
+from __future__ import annotations
+
 from time import time
+from typing import Any, override
 
 import numpy as np
 import pandas as pd
-from scipy.stats import differential_entropy
+from numpy.typing import NDArray
 
+from .model import Model
 from .multiple_runs import MultiDW
 
 
-class GridSearchCalibration:
+class GridSearchCalibration(Model):
     def __init__(
         self,
         o_name: str,
-        d_bounds: list,
-        mu_bounds: list,
-        grid_size: int,
+        d_bounds: list[float],
+        mu_bounds: list[float],
         num_of_simulations: int,
         real_d: float,
         real_mu: float,
-        topology: str = "full",
+        topology: str,
+        grid_size: int,
         log: bool = False,
     ):
-        self.name = o_name
-        self.d_bounds = d_bounds
-        self.mu_bounds = mu_bounds
-        self.grid_size = grid_size
-        self.num_of_simulations = num_of_simulations
-        self.real_d = real_d
-        self.real_mu = real_mu
-        self.topology = topology
-        self.log = log
+        super().__init__(
+            o_name=o_name,
+            d_bounds=d_bounds,
+            mu_bounds=mu_bounds,
+            num_of_simulations=num_of_simulations,
+            real_d=real_d,
+            real_mu=real_mu,
+            topology=topology,
+            log=log,
+        )
 
-        self.t, self.y_real = self._read_opinions(o_name)
+        self.grid_size = grid_size
         self.d_grid, self.mu_grid = self._generate_grid()
         self.fitness_grid = np.zeros_like(self.d_grid)
-
-        self.total_time = None
-        self.abm_calls = 0
-        self.best_params = None
-        self.best_fitness = None
-        self.prediction_error = None
-
-    def _read_opinions(self, o_name: str) -> np.ndarray:
-        """Read the opinions from the file.
-        o_name (str): Name of the opinion file."""
-        df = pd.read_csv(f"results/{o_name}.csv", header=0)
-        t = np.array(df.columns, dtype=int)
-        return t, np.sort(df.to_numpy(), axis=0).T
 
     def _generate_grid(self):
         """Generate a grid of parameters for calibration."""
@@ -54,6 +46,7 @@ class GridSearchCalibration:
         d_grid, mu_grid = np.meshgrid(d_values, mu_values)
         return d_grid.flatten(), mu_grid.flatten()
 
+    @override
     def run(self):
         """Run the grid search calibration process."""
         start_time = time()
@@ -66,10 +59,12 @@ class GridSearchCalibration:
                 N=self.y_real.shape[1],
                 d=d,
                 mu=mu,
-                t=max(self.t),
+                t=np.max(
+                    self.t,
+                ).astype(int),
                 topology=self.topology,
                 num_of_runs=self.num_of_simulations,
-                snapshots=self.t,
+                snapshots=self.t.tolist(),
             )
             self.abm_calls += self.num_of_simulations
             entropy = sim.run()[-1]
@@ -83,23 +78,6 @@ class GridSearchCalibration:
         self.prediction_error = np.abs(
             np.array([self.real_d, self.real_mu]) - self.best_params
         )
-
-    def _fitness(self, entropy_pred: list) -> float:
-        """
-        Calculate fitness based on MSE between real and predicted CDFs for single simulation.
-        y_pred (np.ndarray): Predicted opinions for the given time steps.
-
-        1. ecdf approach - failed (add y_pred: np.ndarray = None to work)
-        2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
-        3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
-        """
-
-        entropy_real = np.array(
-            [differential_entropy(sample) for sample in self.y_real]
-        )
-        entropy_pred = np.array(entropy_pred)
-
-        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
 
     def export_calibration_results(self):
         """Export calibration results to csv file."""
@@ -116,48 +94,36 @@ class GridSearchCalibration:
         df.to_csv(f"results/GS_{self.name}.csv", index=False)
 
 
-class SimulatedAnnealingCalibration:
+class SimulatedAnnealingCalibration(Model):
     def __init__(
         self,
         o_name: str,
-        d_bounds: list,
-        mu_bounds: list,
-        initial_temp: float,
-        cooling_rate: float,
+        d_bounds: list[float],
+        mu_bounds: list[float],
         num_of_simulations: int,
-        max_iter: int,
         real_d: float,
         real_mu: float,
+        topology: str,
+        initial_temp: float,
+        cooling_rate: float,
+        max_iter: int,
         param_range: float = 0.05,
-        topology: str = "full",
         log: bool = False,
     ):
-        self.name = o_name
-        self.t, self.y_real = self._read_opinions(o_name)
-        self.d_bounds = d_bounds
-        self.mu_bounds = mu_bounds
-        self.num_of_simulations = num_of_simulations
-        self.topology = topology
-        self.log = log
+        super().__init__(
+            o_name=o_name,
+            d_bounds=d_bounds,
+            mu_bounds=mu_bounds,
+            num_of_simulations=num_of_simulations,
+            real_d=real_d,
+            real_mu=real_mu,
+            topology=topology,
+            log=log,
+        )
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
         self.max_iter = max_iter
         self.param_range = param_range
-        self.real_d = real_d
-        self.real_mu = real_mu
-
-        self.total_time = None
-        self.abm_calls = 0
-        self.best_params = None
-        self.best_fitness = None
-        self.prediction_error = None
-
-    def _read_opinions(self, o_name: str) -> np.ndarray:
-        """Read the opinions from the file.
-        o_name (str): Name of the opinion file."""
-        df = pd.read_csv(f"results/{o_name}.csv", header=0)
-        t = np.array(df.columns, dtype=int)
-        return t, np.sort(df.to_numpy(), axis=0).T
 
     def run(self):
         """Run the simulated annealing calibration process."""
@@ -171,7 +137,7 @@ class SimulatedAnnealingCalibration:
             t=max(self.t),
             topology=self.topology,
             num_of_runs=self.num_of_simulations,
-            snapshots=self.t,
+            snapshots=self.t.tolist(),
         )
         self.abm_calls += self.num_of_simulations
         entropy = sim.run()[-1]
@@ -204,7 +170,7 @@ class SimulatedAnnealingCalibration:
                 t=max(self.t),
                 topology=self.topology,
                 num_of_runs=self.num_of_simulations,
-                snapshots=self.t,
+                snapshots=self.t.tolist(),
             )
             self.abm_calls += self.num_of_simulations
             entropy = sim.run()[-1]
@@ -216,29 +182,12 @@ class SimulatedAnnealingCalibration:
 
             temp *= self.cooling_rate
 
-        self.best_params = np.array([current_d, current_mu])
+        self.best_params: NDArray | Any = np.array([current_d, current_mu])
         self.best_fitness = max_fitness
         self.total_time = time() - start_time
         self.prediction_error = np.abs(
             np.array([self.real_d, self.real_mu]) - self.best_params
         )
-
-    def _fitness(self, entropy_pred: list) -> float:
-        """
-        Calculate fitness based on MSE between real and predicted CDFs for single simulation.
-        y_pred (np.ndarray): Predicted opinions for the given time steps.
-
-        1. ecdf approach - failed (add y_pred: np.ndarray = None to work)
-        2. entropy calculation approach - good but slow (add y_pred: np.ndarray = None to work)
-        3. entropy from multidw - current solution - entropy of y_pred instead of raw y_pred
-        """
-
-        entropy_real = np.array(
-            [differential_entropy(sample) for sample in self.y_real]
-        )
-        entropy_pred = np.array(entropy_pred)
-
-        return 1 / (1 + np.sum(np.abs(entropy_real - entropy_pred)))
 
     def export_calibration_results(self):
         """Export calibration results to csv file."""
@@ -253,29 +202,3 @@ class SimulatedAnnealingCalibration:
             }
         )
         df.to_csv(f"results/SA_{self.name}.csv", index=False)
-
-
-if __name__ == "__main__":
-    # cal = GridSearchCalibration(
-    #     o_name = "o_N1000_d0.23_mu0.46_full",
-    #     d_bounds = [0.1, 0.5],
-    #     mu_bounds = [0.1, 0.5],
-    #     grid_size = 15,
-    #     num_of_simulations = 5,
-    #     topology = "full",
-    #     log = True
-    #     )
-    cal = SimulatedAnnealingCalibration(
-        o_name="o_N1000_d0.23_mu0.46_full",
-        d_bounds=[0.1, 0.5],
-        mu_bounds=[0.1, 0.5],
-        initial_temp=1,
-        cooling_rate=0.95,
-        num_of_simulations=5,
-        max_iter=100,
-        param_range=0.01,
-        topology="full",
-        log=True,
-    )
-    cal.run()
-    cal.export_calibration_results()

@@ -73,6 +73,7 @@ if __name__ == "__main__":
             num_of_simulations=num_of_simulations,
         )
     )
+
     results.extend(
         task_calibration_SA(
             o_name,
@@ -123,5 +124,6 @@ if __name__ == "__main__":
                 stop_fitness,
             )
         )
+
     with open(f"results/calibration_results_{o_name}.jsonl", "w") as f:
         f.writelines(result + "\n" for result in results)

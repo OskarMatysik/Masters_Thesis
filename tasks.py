@@ -10,25 +10,25 @@ from src.calibration_surrogate import MLSurrogateCalibration
 
 def task_calibration_GS(
     o_name: str,
-    d_bounds: list,
-    mu_bounds: list,
+    d_bounds: list[float],
+    mu_bounds: list[float],
     grid_size: int,
     number_of_runs: int = 1,
     num_of_simulations: int = 100,
 ) -> list[str]:
 
-    d_real = float(o_name.split("_")[2][1:])
-    mu_real = float(o_name.split("_")[3][2:])
+    real_d = float(o_name.split("_")[2][1:])
+    real_mu = float(o_name.split("_")[3][2:])
     topology = o_name.split("_")[4]
 
-    ds = []
-    mus = []
-    fitnesses = []
-    prediction_errors = []
-    total_times = []
-    abm_calls = []
+    ds: list[float] = []
+    mus: list[float] = []
+    fitnesses: list[float] = []
+    prediction_errors: list[float] = []
+    total_times: list[float] = []
+    abm_calls: list[int] = []
 
-    for i in range(number_of_runs):
+    for _ in range(number_of_runs):
         cal = GridSearchCalibration(
             o_name=o_name,
             d_bounds=d_bounds,
@@ -36,8 +36,8 @@ def task_calibration_GS(
             grid_size=grid_size,
             num_of_simulations=num_of_simulations,
             topology=topology,
-            real_d=d_real,
-            real_mu=mu_real,
+            real_d=real_d,
+            real_mu=real_mu,
         )
         cal.run()
         ds.append(cal.best_params[0])
@@ -71,8 +71,8 @@ def task_calibration_SA(
     num_of_simulations: int = 100,
     max_iter: int = 100,
 ) -> list[str]:
-    d_real = float(o_name.split("_")[2][1:])
-    mu_real = float(o_name.split("_")[3][2:])
+    real_d = float(o_name.split("_")[2][1:])
+    real_mu = float(o_name.split("_")[3][2:])
     topology = o_name.split("_")[4]
     results = []
 
@@ -85,7 +85,7 @@ def task_calibration_SA(
         abm_calls = []
 
         print(f"Running Simulated Annealing with cooling_rate={cooling_rate}")
-        for i in range(number_of_runs):
+        for _ in range(number_of_runs):
             cal = SimulatedAnnealingCalibration(
                 o_name=o_name,
                 d_bounds=d_bounds,
@@ -95,8 +95,8 @@ def task_calibration_SA(
                 num_of_simulations=num_of_simulations,
                 max_iter=max_iter,
                 topology=topology,
-                real_d=d_real,
-                real_mu=mu_real,
+                real_d=real_d,
+                real_mu=real_mu,
             )
             cal.run()
             ds.append(cal.best_params[0])
@@ -134,8 +134,8 @@ def task_calibration_GA1(
     max_iter: int = 100,
     stop_fitness: float = 0.95,
 ) -> list[str]:
-    d_real = float(o_name.split("_")[2][1:])
-    mu_real = float(o_name.split("_")[3][2:])
+    real_d = float(o_name.split("_")[2][1:])
+    real_mu = float(o_name.split("_")[3][2:])
     topology = o_name.split("_")[4]
     results = []
     for pc, pm, mutation_range, pop_size in product(
@@ -147,30 +147,29 @@ def task_calibration_GA1(
         prediction_errors = []
         total_times = []
         abm_calls = []
-        for i in range(number_of_runs):
+        for _ in range(number_of_runs):
             print(
                 f"Running GA1 with pc={pc}, pm={pm}, mutation_range={mutation_range}, pop_size={pop_size}"
             )
             cal = GA1Calibration(
                 o_name=o_name,
-                num_of_params=2,
                 pop_size=pop_size,
                 p_c=pc,
                 p_m=pm,
                 max_iter=max_iter,
                 stop_fitness=stop_fitness,
-                L_p=[0, 0],
-                U_p=[0.5, 0.5],
+                d_bounds=[0, 0.5],
+                mu_bounds=[0, 0.5],
                 mutation_range=mutation_range,
                 topology=topology,
                 num_of_simulations=num_of_simulations,
-                d_real=d_real,
-                mu_real=mu_real,
+                real_d=real_d,
+                real_mu=real_mu,
             )
             cal.run()
-            ds.append(cal.result[np.argmax(cal.fitness)][0])
-            mus.append(cal.result[np.argmax(cal.fitness)][1])
-            fitnesses.append(max(cal.fitness))
+            ds.append(cal.best_params[0])
+            mus.append(cal.best_params[1])
+            fitnesses.append(cal.best_fitness)
             prediction_errors.append(cal.prediction_error)
             total_times.append(cal.total_time)
             abm_calls.append(cal.abm_calls)
@@ -206,8 +205,8 @@ def task_calibration_GA2(
     max_iter: int = 50,
     stop_fitness: float = 0.95,
 ) -> list[str]:
-    d_real = float(o_name.split("_")[2][1:])
-    mu_real = float(o_name.split("_")[3][2:])
+    real_d = float(o_name.split("_")[2][1:])
+    real_mu = float(o_name.split("_")[3][2:])
     topology = o_name.split("_")[4]
     results = []
 
@@ -223,31 +222,30 @@ def task_calibration_GA2(
         print(
             f"Running GA2 with pc={pc}, pm={pm}, mutation_range={mutation_range}, pop_size={pop_size}"
         )
-        for i in range(number_of_runs):
+        for _ in range(number_of_runs):
             cal = GA2Calibration(
                 o_name=o_name,
-                num_of_params=2,
                 pop_size=pop_size,
                 p_c=pc,
                 p_m=pm,
                 max_iter=max_iter,
                 stop_fitness=stop_fitness,
-                L_p=[0.01, 0.01],
-                U_p=[0.5, 0.5],
+                d_bounds=[0, 0.5],
+                mu_bounds=[0, 0.5],
                 mutation_range=mutation_range,
                 topology=topology,
                 num_of_simulations=num_of_simulations,
-                d_real=d_real,
-                mu_real=mu_real,
+                real_d=real_d,
+                real_mu=real_mu,
                 beta=6,
                 gamma_L=2,
                 gamma_U=10,
                 alpha=0.2,
             )
             cal.run()
-            ds.append(cal.result[np.argmax(cal.fitness)][0])
-            mus.append(cal.result[np.argmax(cal.fitness)][1])
-            fitnesses.append(max(cal.fitness))
+            ds.append(cal.best_params[0])
+            mus.append(cal.best_params[1])
+            fitnesses.append(cal.best_fitness)
             prediction_errors.append(cal.prediction_error)
             total_times.append(cal.total_time)
             abm_calls.append(cal.abm_calls)
@@ -275,15 +273,15 @@ def task_calibration_GA2(
 def task_calibration_ML_surrogate(
     o_name: str,
     surrogate: str,
-    pool_sizes: list,
-    sample_sizes: list,
-    number_of_runs=1,
+    pool_sizes: list[int],
+    sample_sizes: list[int],
+    number_of_runs: int = 1,
     num_of_simulations: int = 100,
     max_iter: int = 50,
     stop_fitness: float = 0.95,
 ) -> list[str]:
-    d_real = float(o_name.split("_")[2][1:])
-    mu_real = float(o_name.split("_")[3][2:])
+    real_d = float(o_name.split("_")[2][1:])
+    real_mu = float(o_name.split("_")[3][2:])
     topology = o_name.split("_")[4]
     results = []
 
@@ -298,19 +296,20 @@ def task_calibration_ML_surrogate(
             print(
                 f"Running ML Surrogate Calibration, surrogate={surrogate}, pool_size={pool_size}, sample_size={sample_size}"
             )
-            for i in range(number_of_runs):
+            for _ in range(number_of_runs):
                 cal = MLSurrogateCalibration(
                     o_name=o_name,
                     surrogate=surrogate,
-                    sampling_method="Sobol",
                     pool_size=pool_size,
                     sample_size=sample_size,
                     max_iter=max_iter,
                     stop_fitness=stop_fitness,
                     num_of_simulations=num_of_simulations,
                     topology=topology,
-                    d_real=d_real,
-                    mu_real=mu_real,
+                    real_d=real_d,
+                    real_mu=real_mu,
+                    d_bounds=[0, 0.5],
+                    mu_bounds=[0, 0.5],
                 )
                 cal.run()
                 ds.append(cal.best_params[0])

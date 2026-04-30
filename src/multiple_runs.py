@@ -42,7 +42,7 @@ class MultiDW:
         self, chunk: np.ndarray
     ) -> list[tuple[list[float], list[float], list[float]]]:
         """Run the model and return the statistics."""
-        np.random.seed(int.from_bytes(os.urandom(4), "big"))  # ai slop moment
+        np.random.seed(int.from_bytes(os.urandom(4), "big"))
         chunk_results = []
         for _ in chunk:
             model = DeffuantWeisbuchModel(
@@ -170,29 +170,3 @@ def generate_params(
     """Generate parameters for MultiDWWithParams class."""
     ds = np.arange(dl, dh + step, step).astype(float)
     return [(N, d, mu, t, topology) for d in ds]
-
-
-if __name__ == "__main__":
-    # Testing on parameter ranges:
-    # N = 1000
-    # d = [0.05, 0.1, ..., 0.5]
-    # mu = 0.5
-    # t = 50
-    params_full = generate_params(
-        N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="full", step=0.01
-    )
-    params_random = generate_params(
-        N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="random", step=0.01
-    )
-    params_scale_free = generate_params(
-        N=1000, dl=0.05, dh=0.5, mu=0.5, t=100, topology="scale-free", step=0.01
-    )
-    params_net = generate_params(
-        N=1000, dl=0.05, dh=0.5, mu=0.5, t=1000, topology="net", step=0.01
-    )
-    # params = params_full, params_random, params_scale_free#, params_net
-    params = [params_full]
-    for p in params:
-        multi_model = MultiDWWithParams(num_of_runs=20, params=p, log=True)
-        multi_model.run()
-        multi_model.plot_results()
