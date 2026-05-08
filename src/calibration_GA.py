@@ -2,7 +2,6 @@ from time import time
 from typing import override
 
 import numpy as np
-import pandas as pd
 from numpy.typing import NDArray
 from scipy.stats import differential_entropy
 
@@ -88,7 +87,8 @@ class GA1Calibration(GACalibration):
         new_population = self._init_population()
         i = 0
         fitness_values = np.zeros(self.pop_size)
-        population: NDArray | None = None
+        population = np.array(new_population)
+
         for _ in range(self.max_iter):
             population = np.array(new_population)
             new_population = []
@@ -143,27 +143,12 @@ class GA1Calibration(GACalibration):
             if max(fitness_values) <= self.stop_fitness:
                 break
 
-        assert population is not None
         self.best_fitness = np.max(fitness_values)
         self.best_params = population[np.argmax(fitness_values)]
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(
-            np.array([self.real_d, self.real_mu]) - self.best_params
+        self.prediction_error = np.linalg.norm(
+            self.best_params - np.array([self.real_d, self.real_mu])
         )
-
-    def export_calibration_results(self):
-        """Return calibration results to csv file."""
-        df = pd.DataFrame(
-            {
-                "d": self.best_params[0],
-                "mu": self.best_params[1],
-                "fitness": self.best_fitness,
-                "prediction_error": self.prediction_error,
-                "total_time": self.total_time,
-                "abm_calls": self.abm_calls,
-            }
-        )
-        df.to_csv(f"results/GA1_{self.name}.csv", index=False)
 
 
 class GA2Calibration(GACalibration):
@@ -264,12 +249,12 @@ class GA2Calibration(GACalibration):
         i = 0
         fitness_values = np.zeros(self.pop_size)
         pop_size = self.pop_size
-        population: NDArray | None = None
+        population = np.array(new_population)
 
         while (
             i < self.max_iter
             and max(fitness_values) <= self.stop_fitness
-            or pop_size < 3
+            and pop_size > 3
         ):
             population = np.array(new_population)
             new_population = []
@@ -340,24 +325,9 @@ class GA2Calibration(GACalibration):
                 print(f"Iteration: {i}, Best fit: {max(fitness_values)}")
                 print(f"Pop size: {pop_size}")
 
-        assert population is not None
         self.best_fitness = np.max(fitness_values)
         self.best_params = population[np.argmax(fitness_values)]
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(
-            np.array([self.real_d, self.real_mu]) - self.best_params
+        self.prediction_error = np.linalg.norm(
+            self.best_params - np.array([self.real_d, self.real_mu])
         )
-
-    def export_calibration_results(self):
-        """Return calibration results to csv file."""
-        df = pd.DataFrame(
-            {
-                "d": [self.best_params[0]],
-                "mu": [self.best_params[1]],
-                "fitness": self.best_params,
-                "prediction_error": self.prediction_error,
-                "total_time": self.total_time,
-                "abm_calls": self.abm_calls,
-            }
-        )
-        df.to_csv(f"results/GA2_{self.name}.csv", index=False)

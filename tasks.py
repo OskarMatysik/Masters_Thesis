@@ -67,6 +67,7 @@ def task_calibration_SA(
     d_bounds: list,
     mu_bounds: list,
     cooling_rates: list,
+    stop_fitness: float = 0.95,
     number_of_runs: int = 1,
     num_of_simulations: int = 100,
     max_iter: int = 100,
@@ -97,6 +98,7 @@ def task_calibration_SA(
                 topology=topology,
                 real_d=real_d,
                 real_mu=real_mu,
+                stop_fitness=stop_fitness
             )
             cal.run()
             ds.append(cal.best_params[0])

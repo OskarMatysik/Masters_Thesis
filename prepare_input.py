@@ -66,8 +66,10 @@ if __name__ == "__main__":
     # Dataset parameters
     topologies = ["full"]
     Ns = [1000]
-    ds = np.arange(0.05, 0.55, 0.05).round(2).tolist()
-    mus = np.arange(0.05, 0.55, 0.05).round(2).tolist()
+    # ds = np.arange(0.05, 0.55, 0.05).round(2).tolist()
+    # mus = np.arange(0.05, 0.55, 0.05).round(2).tolist()
+    ds = [0.05, 0.45]
+    mus = [0.05, 0.45]
 
     create_catalog_structure()
     generate_datasets(topologies, Ns, ds, mus)

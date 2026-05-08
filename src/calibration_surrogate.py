@@ -2,7 +2,6 @@ from time import time
 from typing import override
 
 import numpy as np
-import pandas as pd
 from scipy.stats import qmc
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -111,8 +110,8 @@ class MLSurrogateCalibration(Model):
         self.best_params = np.array(self.x_train[best_idx])
         self.best_fitness = self.y_train[best_idx]
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(
-            np.array([self.real_d, self.real_mu]) - self.best_params
+        self.prediction_error = np.linalg.norm(
+            self.best_params - np.array([self.real_d, self.real_mu])
         )
 
     def _init_pool(self):
@@ -154,12 +153,10 @@ class MLSurrogateCalibration(Model):
             case "RFR":
                 return RandomForestRegressor()
             case "GPR":
-                kernel = ConstantKernel(1.0) * RBF(length_scale=1.0) + WhiteKernel(
-                    noise_level=1
-                )
+                kernel = ConstantKernel(1.0) * RBF() + WhiteKernel()
                 return GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=10)
             case "MLP":
-                return MLPRegressor(hidden_layer_sizes=(100, 50), max_iter=500)
+                return MLPRegressor(hidden_layer_sizes=(100, 50))
             case "XGB":
                 return XGBRegressor(
                     objective="reg:squarederror", n_estimators=100, learning_rate=0.1
@@ -183,17 +180,3 @@ class MLSurrogateCalibration(Model):
             entropy = model.run()[-1]
             self.x_train.append((d, mu))
             self.y_train.append(self._fitness(entropy))
-
-    def export_calibration_results(self):
-        """Export calibration results to csv file."""
-        df = pd.DataFrame(
-            {
-                "d": [self.best_params[0]],
-                "mu": [self.best_params[1]],
-                "fitness": [self.best_fitness],
-                "prediction_error": [self.prediction_error],
-                "total_time": [self.total_time],
-                "abm_calls": [self.abm_calls],
-            }
-        )
-        df.to_csv(f"results/MLSurrogate_{self.name}_{self.surrogate}.csv", index=False)

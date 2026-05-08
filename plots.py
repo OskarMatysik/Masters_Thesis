@@ -1,171 +1,216 @@
+import glob
+import json
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 
-def heatmaps_ml(filenames, ml_models, stat_name):
-
-    fig = plt.figure(figsize=(16, 48))
-    gs = fig.add_gridspec(9, 3, width_ratios=[1, 1, 1], wspace=0.3)
-
-    ax = np.array([[fig.add_subplot(gs[i, j]) for j in range(3)] for i in range(9)])
-
-    for i, dataset_name in enumerate(filenames):
-        for j, model in enumerate(ml_models):
-            file_name = f"results/results_{model}{dataset_name}"
-            df = pd.read_csv(file_name)[["pool_size", "sample_size", stat_name]]
-            values = df[stat_name].values.reshape(3, 3)
-
-            pool_sizes = sorted(df["pool_size"].unique())
-            sample_sizes = sorted(df["sample_size"].unique())
-
-            ax[i, j].imshow(values, interpolation="nearest")
-            ax[i, j].set_title(f"{model} - {dataset_name}", fontsize=12)
-            ax[i, j].set_xlabel("Sample Size", fontsize=11)
-            ax[i, j].set_ylabel("Pool Size", fontsize=11)
-            ax[i, j].set_xticks(np.arange(3))
-            ax[i, j].set_yticks(np.arange(3))
-            ax[i, j].set_xticklabels(sample_sizes, fontsize=10)
-            ax[i, j].set_yticklabels(pool_sizes, fontsize=10)
-
-            for y in range(3):
-                for x in range(3):
-                    ax[i, j].text(
-                        x,
-                        y,
-                        f"{values[y, x]:.4f}",
-                        ha="center",
-                        va="center",
-                        fontsize=10,
-                    )
-
-    plt.savefig(f"results/heatmaps_ml_{stat_name}.png", bbox_inches="tight")
-
-
-def heatmaps_avg_ml(filenames, ml_models, stat_name):
-
-    fig = plt.figure(figsize=(16, 5))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1, 1, 1], wspace=0.3)
-
-    ax = [fig.add_subplot(gs[0, i]) for i in range(3)]
-
-    pool_sizes = None
-    sample_sizes = None
-
-    for j, model in enumerate(ml_models):
-        values = np.zeros((3, 3))
-
-        for i, dataset_name in enumerate(filenames):
-            file_name = f"results/results_{model}{dataset_name}"
-            df = pd.read_csv(file_name)[["pool_size", "sample_size", stat_name]]
-            values += df[stat_name].values.reshape(3, 3)
-
-            # Get pool_sizes and sample_sizes from the first iteration
-            if pool_sizes is None:
-                pool_sizes = sorted(df["pool_size"].unique())
-                sample_sizes = sorted(df["sample_size"].unique())
-
-        values /= len(filenames)
-
-        ax[j].imshow(values, interpolation="nearest")
-        ax[j].set_title(f"{model}", fontsize=12)
-        ax[j].set_xlabel("Sample Size", fontsize=11)
-        ax[j].set_ylabel("Pool Size", fontsize=11)
-        ax[j].set_xticks(np.arange(3))
-        ax[j].set_yticks(np.arange(3))
-        ax[j].set_xticklabels(sample_sizes, fontsize=10)
-        ax[j].set_yticklabels(pool_sizes, fontsize=10)
-
-        for y in range(3):
-            for x in range(3):
-                ax[j].text(
-                    x, y, f"{values[y, x]:.4f}", ha="center", va="center", fontsize=10
-                )
-
-    plt.savefig(f"results/heatmaps_avg_ml_{stat_name}.png", bbox_inches="tight")
-
-
-def heatmaps_avg_GA1(file_names, stat_name):
+def bar_plots_sa_cooling_rate():
     """
-    Create bar plots showing the relationship between GA1 parameters
-    (pc, pm, pop_size) and a statistic, averaged across all datasets.
+    Load SA model data from JSONL files and create bar plots
+    for each statistic with cooling rate on x-axis.
     """
-    fig = plt.figure(figsize=(16, 5))
-    gs = fig.add_gridspec(1, 3, width_ratios=[1, 1, 1], wspace=0.3)
+    # Load all JSONL files from results directory
+    jsonl_files = glob.glob("results/calibration_results_*.jsonl")
 
-    ax = [fig.add_subplot(gs[0, i]) for i in range(3)]
-    parameters = ["pc", "pm", "pop_size"]
-
-    # Aggregate data across all datasets
     all_data = []
+    for file_path in jsonl_files:
+        with open(file_path, "r") as f:
+            for line in f:
+                data = json.loads(line)
+                if data.get("model") == "SA":  # Filter for SA model only
+                    all_data.append(data)
 
-    for dataset_name in file_names:
-        file_name = f"results/results_GA1{dataset_name}"
-        df = pd.read_csv(file_name)[["pc", "pm", "pop_size", stat_name]]
-        all_data.append(df)
+    df = pd.DataFrame(all_data)
 
-    combined_df = pd.concat(all_data, ignore_index=True)
+    # Statistics to plot
+    stats = ["prediction_error", "total_time", "abm_calls", "fitness"]
 
-    # Create bar plots for each parameter
-    for idx, param in enumerate(parameters):
-        # Group by parameter and calculate mean of stat_name
-        grouped = combined_df.groupby(param)[stat_name].mean().sort_index()
+    # Create subplots
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    axes = axes.flatten()
 
-        bars = ax[idx].bar(range(len(grouped)), grouped.values, color="steelblue")
-        ax[idx].set_title(f"{param}", fontsize=12)
-        ax[idx].set_xlabel(f"{param}", fontsize=11)
-        ax[idx].set_ylabel(f"Average {stat_name}", fontsize=11)
-        ax[idx].set_xticks(range(len(grouped)))
-        ax[idx].set_xticklabels(
-            [
-                f"{val:.4g}" if isinstance(val, float) else str(val)
-                for val in grouped.index
-            ],
-            fontsize=10,
+    for idx, stat in enumerate(stats):
+        # Group by cooling_rate and calculate mean
+        grouped = df.groupby("cooling_rate")[stat].mean().sort_index()
+        axes[idx].bar(
+            range(len(grouped)), grouped.values, color="steelblue", edgecolor="black"
         )
+        axes[idx].set_title(f"SA Model: {stat}", fontsize=12, fontweight="bold")
+        axes[idx].set_xlabel("Cooling Rate", fontsize=11)
+        axes[idx].set_ylabel(f"Average {stat}", fontsize=11)
+        axes[idx].set_xticks(range(len(grouped)))
+        axes[idx].set_xticklabels([f"{val:.2f}" for val in grouped.index], fontsize=10)
+        axes[idx].grid(axis="y", alpha=0.3)
 
         # Add value labels on bars
-        for bar, value in zip(bars, grouped.values):
-            ax[idx].text(
-                bar.get_x() + bar.get_width() / 2,
-                bar.get_height(),
-                f"{value:.4f}",
-                ha="center",
-                va="bottom",
-                fontsize=9,
+        for i, (x, value) in enumerate(zip(range(len(grouped)), grouped.values)):
+            axes[idx].text(
+                x, value, f"{value:.2f}", ha="center", va="bottom", fontsize=9
             )
 
-    plt.savefig(f"results/heatmaps_avg_GA1_{stat_name}.png", bbox_inches="tight")
+    fig.tight_layout()
+    fig.savefig("results/sa_cooling_rate_stats.png", dpi=150, bbox_inches="tight")
+    print("Plot saved to results/sa_cooling_rate_stats.png")
+
+
+def heatmaps_ml_models():
+    """
+    Load data for GBR, RFR, MLP, XGB models and create heatmaps
+    for each statistic with pool_size (y-axis) and sample_size (x-axis).
+    """
+    # Load all JSONL files from results directory
+    jsonl_files = glob.glob("results/calibration_results_*.jsonl")
+
+    all_data = []
+    for file_path in jsonl_files:
+        with open(file_path, "r") as f:
+            for line in f:
+                data = json.loads(line)
+                model = data.get("model")
+                if model in ["GBR", "RFR", "MLP", "XGB"]:
+                    all_data.append(data)
+
+    df = pd.DataFrame(all_data)
+    models = ["GBR", "RFR", "MLP", "XGB"]
+    stats = ["prediction_error", "total_time", "abm_calls", "fitness"]
+
+    # Create a figure for each statistic
+    for stat in stats:
+        fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+        axes = axes.flatten()
+
+        for idx, model in enumerate(models):
+            # Filter data for this model
+            model_df = df[df["model"] == model]
+
+            # Create pivot table with pool_size (rows) and sample_size (columns)
+            pivot = model_df.pivot_table(
+                values=stat, index="pool_size", columns="sample_size", aggfunc="mean"
+            )
+
+            # Sort indices to ensure consistent ordering
+            pivot = pivot.reindex(sorted(pivot.index)).reindex(
+                sorted(pivot.columns), axis=1
+            )
+            values = pivot.values
+
+            # Create heatmap
+            im = axes[idx].imshow(
+                values, interpolation="nearest", aspect="auto", cmap="viridis"
+            )
+            axes[idx].set_title(f"{model}", fontsize=12, fontweight="bold")
+            axes[idx].set_xlabel("Sample Size", fontsize=11)
+            axes[idx].set_ylabel("Pool Size", fontsize=11)
+            axes[idx].set_xticks(np.arange(len(pivot.columns)))
+            axes[idx].set_yticks(np.arange(len(pivot.index)))
+            axes[idx].set_xticklabels([f"{int(x)}" for x in pivot.columns], fontsize=10)
+            axes[idx].set_yticklabels([f"{int(y)}" for y in pivot.index], fontsize=10)
+
+            # Add value labels on heatmap
+            for y in range(len(pivot.index)):
+                for x in range(len(pivot.columns)):
+                    axes[idx].text(
+                        x,
+                        y,
+                        f"{values[y, x]:.2f}",
+                        ha="center",
+                        va="center",
+                        fontsize=9,
+                        color="white",
+                    )
+
+            # Add colorbar
+            fig.colorbar(im, ax=axes[idx])
+
+        fig.suptitle(f"ML Models: {stat}", fontsize=14, fontweight="bold", y=1.00)
+        fig.tight_layout()
+        fig.savefig(
+            f"results/ml_models_heatmap_{stat}.png", dpi=150, bbox_inches="tight"
+        )
+        print(f"Plot saved to results/ml_models_heatmap_{stat}.png")
+        plt.close()
+
+    
+def heatmaps_ga_models():
+    """
+    Load data for GA1, GA2 models and create heatmaps
+    for each statistic with p_c, p_m, pop_size.
+    """
+    # Load all JSONL files from results directory
+    jsonl_files = glob.glob("results/calibration_results_*.jsonl")
+
+    models = ["GA1", "GA2"]
+
+    all_data = []
+    for file_path in jsonl_files:
+        with open(file_path, "r") as f:
+            for line in f:
+                data = json.loads(line)
+                model = data.get("model")
+                if model in models:
+                    all_data.append(data)
+
+    df = pd.DataFrame(all_data)
+    stats = ["prediction_error", "total_time", "abm_calls", "fitness"]
+    pcs = sorted(df["pc"].unique())
+
+    fig, axes = plt.subplots(3, figsize=(14, 10))
+    axes = axes.flatten()
+    for stat in stats:
+        for model in models:
+            for idx, pc in enumerate(pcs):
+
+                pc_df: pd.DataFrame = df[df["pcs"] == pc and df["model"] == model]
+
+                pivot = pc_df.pivot_table(
+                    values=stat, index="pm", columns="pop_size", aggfunc="mean"
+                )
+
+                pivot = pivot.reindex(sorted(pivot.index)).reindex(
+                    sorted(pivot.columns), axis=1
+                )
+                values = pivot.values
+
+                # Create heatmap
+                im = axes[idx].imshow(
+                    values, interpolation="nearest", aspect="auto", cmap="viridis"
+                )
+                axes[idx].set_title(f"p_c = {pc}", fontsize=12, fontweight="bold")
+                axes[idx].set_xlabel("p_m", fontsize=11)
+                axes[idx].set_ylabel("Population Size", fontsize=11)
+                axes[idx].set_xticks(np.arange(len(pivot.columns)))
+                axes[idx].set_yticks(np.arange(len(pivot.index)))
+                axes[idx].set_xticklabels([f"{int(x)}" for x in pivot.columns], fontsize=10)
+                axes[idx].set_yticklabels([f"{int(y)}" for y in pivot.index], fontsize=10)
+
+                # Add value labels on heatmap
+                for y in range(len(pivot.index)):
+                    for x in range(len(pivot.columns)):
+                        axes[idx].text(
+                            x,
+                            y,
+                            f"{values[y, x]:.2f}",
+                            ha="center",
+                            va="center",
+                            fontsize=9,
+                            color="white",
+                        )
+
+                # Add colorbar
+                fig.colorbar(im, ax=axes[idx])
+
+            fig.suptitle(f"{model} Model: {stat}", fontsize=14, fontweight="bold", y=1.00)
+            fig.tight_layout()
+            fig.savefig(
+                f"results/{model}_heatmap_{stat}.png", dpi=150, bbox_inches="tight"
+            )
+            print(f"Plot saved to results/{model}_heatmap_{stat}.png")
+            plt.close()
 
 
 if __name__ == "__main__":
-    # Dataset parameters
-    topologies = ["full"]
-    Ns = [1000]
-    ds = [0.1, 0.25, 0.4]
-    mus = [0.1, 0.25, 0.4]
-
-    stats_names = ["prediction_error", "total_time", "abm_calls"]
-
-    # ML
-    ml_models = ["GBR", "RFR", "MLP"]
-    ml_file_names = [
-        f"_o_N{N}_d{d}_mu{mu}_{topology}.csv"
-        for topology in topologies
-        for N in Ns
-        for d in ds
-        for mu in mus
-    ]
-
-    # GA1
-    ga1_file_names = [
-        f"_o_N{N}_d{d}_mu{mu}_{topology}.csv"
-        for topology in topologies
-        for N in Ns
-        for d in ds
-        for mu in mus
-    ]
-
-    for stat_name in stats_names:
-        heatmaps_avg_ml(ml_file_names, ml_models, stat_name)
-        heatmaps_avg_GA1(ga1_file_names, stat_name)
+    # bar_plots_sa_cooling_rate()
+    # heatmaps_ml_models()
+    pass

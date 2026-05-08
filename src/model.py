@@ -6,6 +6,9 @@ import pandas as pd
 from numpy.typing import NDArray
 from scipy.stats import differential_entropy
 
+D_PARAM_INDEX = 0
+MU_PARAM_INDEX = 1
+
 
 class Model:
     def __init__(

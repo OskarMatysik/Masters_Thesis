@@ -126,7 +126,12 @@ class DeffuantWeisbuchModel:
             cluster_count = [self._clusters(t)[0] for t in snapshots]
             cluster_sizes = [self._clusters(t)[1] for t in snapshots]
             entropy = [
-                float(differential_entropy(self.history[t], method="vasicek"))
+                float(
+                    differential_entropy(
+                        self.history[t] + np.random.random(self.N) * 1e-6,
+                        method="vasicek",
+                    )
+                )
                 for t in snapshots
             ]
 
@@ -136,9 +141,12 @@ class DeffuantWeisbuchModel:
         """Export opinions of agents at random time steps to a file."""
         if self.num_of_data_points is None:
             return
-        indices = np.sort(
-            np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int)
-        )
+        if self.num_of_data_points == 2:
+            indices = np.random.choice(self.t//5), self.t - np.random.choice(self.t//5)
+        else:
+            indices = np.sort(
+                np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int)
+            )
         data = pd.DataFrame(
             np.array([self.history[i] for i in indices]).T, columns=indices
         )

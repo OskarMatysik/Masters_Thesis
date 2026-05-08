@@ -4,7 +4,6 @@ from time import time
 from typing import Any, override
 
 import numpy as np
-import pandas as pd
 from numpy.typing import NDArray
 
 from .model import Model
@@ -75,23 +74,9 @@ class GridSearchCalibration(Model):
         self.best_params = np.array([self.d_grid[best_idx], self.mu_grid[best_idx]])
         self.best_fitness = self.fitness_grid[best_idx]
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(
-            np.array([self.real_d, self.real_mu]) - self.best_params
+        self.prediction_error = np.linalg.norm(
+            self.best_params - np.array([self.real_d, self.real_mu])
         )
-
-    def export_calibration_results(self):
-        """Export calibration results to csv file."""
-        df = pd.DataFrame(
-            {
-                "d": [self.best_params[0]],
-                "mu": [self.best_params[1]],
-                "fitness": [self.best_fitness],
-                "prediction_error": [self.prediction_error],
-                "total_time": [self.total_time],
-                "abm_calls": [self.abm_calls],
-            }
-        )
-        df.to_csv(f"results/GS_{self.name}.csv", index=False)
 
 
 class SimulatedAnnealingCalibration(Model):
@@ -107,6 +92,7 @@ class SimulatedAnnealingCalibration(Model):
         initial_temp: float,
         cooling_rate: float,
         max_iter: int,
+        stop_fitness: float = 0.95,
         param_range: float = 0.05,
         log: bool = False,
     ):
@@ -120,6 +106,7 @@ class SimulatedAnnealingCalibration(Model):
             topology=topology,
             log=log,
         )
+        self.stop_fitness = stop_fitness
         self.initial_temp = initial_temp
         self.cooling_rate = cooling_rate
         self.max_iter = max_iter
@@ -149,6 +136,8 @@ class SimulatedAnnealingCalibration(Model):
             )
 
         for i in range(1, self.max_iter):
+            if max_fitness > self.stop_fitness:
+                break
             d = np.clip(
                 current_d + np.random.normal(0, self.param_range),
                 self.d_bounds[0],
@@ -185,20 +174,6 @@ class SimulatedAnnealingCalibration(Model):
         self.best_params: NDArray | Any = np.array([current_d, current_mu])
         self.best_fitness = max_fitness
         self.total_time = time() - start_time
-        self.prediction_error = np.abs(
-            np.array([self.real_d, self.real_mu]) - self.best_params
+        self.prediction_error = np.linalg.norm(
+            self.best_params - np.array([self.real_d, self.real_mu])
         )
-
-    def export_calibration_results(self):
-        """Export calibration results to csv file."""
-        df = pd.DataFrame(
-            {
-                "d": [self.best_params[0]],
-                "mu": [self.best_params[1]],
-                "fitness": [self.best_fitness],
-                "prediction_error": [self.prediction_error],
-                "total_time": [self.total_time],
-                "abm_calls": [self.abm_calls],
-            }
-        )
-        df.to_csv(f"results/SA_{self.name}.csv", index=False)
