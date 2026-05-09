@@ -99,10 +99,10 @@ class MLSurrogateCalibration(Model):
             best_indices = np.argsort(fitness_pred)[-self.sample_size :]
             self.samples_indices = best_indices
 
-            if np.max(fitness_pred) >= self.stop_fitness:
+            if np.max(self.y_train) >= self.stop_fitness:
                 if self.log:
                     print(
-                        f"Stopping early at iteration {i + 1} with max fitness {np.max(fitness_pred):.4f}"
+                        f"Stopping early at iteration {i + 1} with max fitness {np.max(self.y_train):.4f}"
                     )
                 break
 

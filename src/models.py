@@ -142,7 +142,7 @@ class DeffuantWeisbuchModel:
         if self.num_of_data_points is None:
             return
         if self.num_of_data_points == 2:
-            indices = np.random.choice(self.t//5), self.t - np.random.choice(self.t//5)
+            indices = self.t//5 + np.random.choice(self.t//5), self.t * 4 // 5 - np.random.choice(self.t//5)
         else:
             indices = np.sort(
                 np.random.choice(self.t, self.num_of_data_points, replace=False).astype(int)

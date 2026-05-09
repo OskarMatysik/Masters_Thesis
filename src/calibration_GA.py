@@ -140,7 +140,7 @@ class GA1Calibration(GACalibration):
 
             if self.log:
                 print(f"Iteration: {i}, Best fit: {max(fitness_values)}")
-            if max(fitness_values) <= self.stop_fitness:
+            if max(fitness_values) >= self.stop_fitness:
                 break
 
         self.best_fitness = np.max(fitness_values)

@@ -2,7 +2,7 @@
 
 #SBATCH -c16
 #SBATCH --mem=45gb
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --mail-user=268748@student.pwr.edu.pl
 #SBATCH --job-name=Deffuant_Weisbuch_Calibration_ML
 

@@ -52,17 +52,17 @@ if __name__ == "__main__":
     # ML Surrogate parameters
     surrogates = ["GBR", "RFR", "MLP", "XGB"]
     pool_sizes = [256, 512, 1024]
-    sample_sizes = [10, 20, 30]
+    sample_sizes = [10, 15, 20]
 
     # Global parameters
-    num_of_simulations = 10
+    num_of_simulations = 20
     number_of_runs = 1
-    stop_fitness = 0.95
+    stop_fitness = 0.98
 
     # max_iter = 50
     # num_of_simulations = 10
     # number_of_runs = 1
-    # stop_fitness = 0.95
+    # stop_fitness = 0.98
     # pool_sizes = [1024]
     # sample_sizes = [30]
 
