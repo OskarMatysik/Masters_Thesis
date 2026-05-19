@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import numpy as np
 import pandas as pd
-from scipy.stats import differential_entropy
+from scipy.stats import differential_entropy, gaussian_kde
 
 
 class DeffuantWeisbuchModel:
@@ -120,11 +120,15 @@ class DeffuantWeisbuchModel:
         if snapshots is None:
             std = float(np.std(self.x))
             cluster_count, cluster_sizes = self._clusters()
+            kde = gaussian_kde(self.x)(np.linspace(0, 1, 100))
+            hist = np.histogram(self.x, bins=11, range=(0, 1), density=True)[0]
             entropy = float(differential_entropy(self.x, method="vasicek"))
         else:
             std = [float(np.std(self.history[t])) for t in snapshots]
             cluster_count = [self._clusters(t)[0] for t in snapshots]
             cluster_sizes = [self._clusters(t)[1] for t in snapshots]
+            kde = [gaussian_kde(self.history[t])(np.linspace(0, 1, 100)) for t in snapshots]
+            hist = [np.histogram(self.history[t], bins=11, range=(0, 1), density=True)[0] for t in snapshots]
             entropy = [
                 float(
                     differential_entropy(
@@ -135,7 +139,7 @@ class DeffuantWeisbuchModel:
                 for t in snapshots
             ]
 
-        return std, cluster_count, cluster_sizes, entropy
+        return std, cluster_count, cluster_sizes, kde, hist, entropy
 
     def export_data(self) -> None:
         """Export opinions of agents at random time steps to a file."""
