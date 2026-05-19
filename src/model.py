@@ -4,7 +4,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
-from scipy.stats import differential_entropy
+from scipy.stats import differential_entropy, gaussian_kde
 
 D_PARAM_INDEX = 0
 MU_PARAM_INDEX = 1
@@ -62,3 +62,11 @@ class Model:
         )
 
         return 1 / (1 + np.sum(np.abs(entropy_real - np.array(entropy_pred))))
+    
+    def _fitness_kde(self, y_real, kde_pred):
+        """Calculate fitness based on MSE between real and predicted KDE."""
+        error = 0
+        for i in range(len(y_real)):
+            kde_real = gaussian_kde(y_real[i])(np.linspace(0, 1, 100))
+            error += np.sum((kde_real - kde_pred[i]) ** 2)
+        return 1 / (1 + error)
