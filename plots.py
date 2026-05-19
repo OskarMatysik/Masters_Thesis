@@ -156,13 +156,17 @@ def heatmaps_ga_models():
     stats = ["prediction_error", "total_time", "abm_calls", "fitness"]
     pcs = sorted(df["pc"].unique())
 
-    fig, axes = plt.subplots(3, figsize=(14, 10))
-    axes = axes.flatten()
     for stat in stats:
         for model in models:
-            for idx, pc in enumerate(pcs):
+            num_pcs = len(pcs)
+            fig, axes = plt.subplots(1, num_pcs, figsize=(5 * num_pcs, 4))
+            if num_pcs == 1:
+                axes = [axes]
+            else:
+                axes = axes.flatten()
 
-                pc_df: pd.DataFrame = df[df["pcs"] == pc and df["model"] == model]
+            for idx, pc in enumerate(pcs):
+                pc_df: pd.DataFrame = df[(df["pc"] == pc) & (df["model"] == model)]
 
                 pivot = pc_df.pivot_table(
                     values=stat, index="pm", columns="pop_size", aggfunc="mean"
@@ -178,8 +182,8 @@ def heatmaps_ga_models():
                     values, interpolation="nearest", aspect="auto", cmap="viridis"
                 )
                 axes[idx].set_title(f"p_c = {pc}", fontsize=12, fontweight="bold")
-                axes[idx].set_xlabel("p_m", fontsize=11)
-                axes[idx].set_ylabel("Population Size", fontsize=11)
+                axes[idx].set_xlabel("pop_size", fontsize=11)
+                axes[idx].set_ylabel("p_m", fontsize=11)
                 axes[idx].set_xticks(np.arange(len(pivot.columns)))
                 axes[idx].set_yticks(np.arange(len(pivot.index)))
                 axes[idx].set_xticklabels([f"{int(x)}" for x in pivot.columns], fontsize=10)
@@ -210,7 +214,61 @@ def heatmaps_ga_models():
             plt.close()
 
 
+def bar_plot_grid_search():
+    """
+    Create a single bar plot with 4 bars for grid search statistics:
+    abm_calls, total_time, fitness, and prediction_error.
+    """
+    jsonl_files = glob.glob("results/calibration_results_*.jsonl")
+
+    all_data = []
+    for file_path in jsonl_files:
+        with open(file_path, "r") as f:
+            for line in f:
+                data = json.loads(line)
+                model = data.get("model")
+                if model == "GS":
+                    all_data.append(data)
+
+    df = pd.DataFrame(all_data)
+
+    # Statistics to plot
+    stats = ["abm_calls", "total_time", "fitness", "prediction_error"]
+
+    # Calculate mean for each statistic
+    means = [df[stat].mean() for stat in stats]
+
+    # Create plot
+    fig, ax = plt.subplots(figsize=(10, 6))
+    colors = ["steelblue", "orange", "green", "red"]
+    bars = ax.bar(stats, means, color=colors, edgecolor="black", linewidth=1.5)
+
+    ax.set_title("Grid Search Results: Average Statistics", fontsize=14, fontweight="bold")
+    ax.set_ylabel("Average Value", fontsize=12)
+    ax.set_xlabel("Statistics", fontsize=12)
+    ax.grid(axis="y", alpha=0.3)
+
+    # Add value labels on bars
+    for bar, mean in zip(bars, means):
+        height = bar.get_height()
+        ax.text(
+            bar.get_x() + bar.get_width() / 2.0,
+            height,
+            f"{mean:.2f}",
+            ha="center",
+            va="bottom",
+            fontsize=11,
+            fontweight="bold",
+        )
+
+    fig.tight_layout()
+    fig.savefig("results/grid_search_stats.png", dpi=150, bbox_inches="tight")
+    print("Plot saved to results/grid_search_stats.png")
+
+
 if __name__ == "__main__":
     # bar_plots_sa_cooling_rate()
     # heatmaps_ml_models()
-    pass
+    # heatmaps_ga_models()
+    bar_plot_grid_search()
+    # pass
