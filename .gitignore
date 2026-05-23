@@ -11,4 +11,6 @@ wheels/
 *.png
 *.csv
 *.jsonl
+
 pytania.txt
+main_copy.py
