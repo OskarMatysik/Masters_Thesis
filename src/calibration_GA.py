@@ -3,7 +3,7 @@ from typing import override
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.stats import differential_entropy
+from scipy.stats import differential_entropy, wasserstein_distance
 
 from .model import Model
 from .multiple_runs import MultiDW
@@ -104,8 +104,9 @@ class GA1Calibration(GACalibration):
                     snapshots=self.t.tolist(),
                 )
                 self.abm_calls += self.num_of_simulations
-                entropy_pred = multi_model.run()[-1]
-                fitness_values[chr_id] = self._fitness(entropy_pred)
+                std, cluster_count, kde, hist, entropy, observations = multi_model.run()
+                # fitness_values[chr_id] = self._fitness(entropy)
+                fitness_values[chr_id] = self._fitness_wasserstein(self.y_real, observations)
 
             for _ in range(int(self.pop_size * self.p_c // 2)):
                 tournament = np.sort(np.random.choice(self.pop_size, 3, replace=False))
@@ -242,6 +243,18 @@ class GA2Calibration(GACalibration):
         return 1 / (1 + np.sum(np.abs((entropy_real - entropy_pred))))
 
     @override
+    def _fitness_wasserstein(self, y_real, observations_pred):
+        """Calculate fitness based on Wasserstein distance between real and predicted observations."""
+
+        distances = []
+        for i in range(len(y_real)):
+            distances.append([wasserstein_distance(y_real[i], obs[i]) for obs in observations_pred])
+        fitness = 1 / (1 + np.sum(np.mean(np.array(distances), axis=1)))
+        # if np.any(np.array(distances) >= self.gamma_t):
+        #     return 0
+        return fitness if fitness > self.gamma_t else 0
+
+    @override
     def run(self) -> None:
         """Run the genetic algorithm to calibrate the model."""
         start_time = time()
@@ -272,8 +285,9 @@ class GA2Calibration(GACalibration):
                     snapshots=self.t.tolist(),
                 )
                 self.abm_calls += self.num_of_simulations
-                entropy_pred = multi_model.run()[-1]
-                fitness_values[chr_id] = self._fitness(entropy_pred)
+                std, cluster_count, kde, hist, entropy, observations = multi_model.run()
+                # fitness_values[chr_id] = self._fitness(entropy)
+                fitness_values[chr_id] = self._fitness_wasserstein(self.y_real, observations)
 
             fitness_values.round(decimals=self.beta)  # 4a
 

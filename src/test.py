@@ -35,7 +35,7 @@ def run_parameter_sweep(
             t = int(10 * (3 + 1 / mu))
             model = DeffuantWeisbuchModel(N=N, d=d, mu=mu, t=t, topology=topology)
             model.run()
-            std, _, _, entropy = model.statistics()
+            std, _, _, entropy, _, _, _ = model.statistics()
 
             entropy_matrix[i, j] = entropy
             std_matrix[i, j] = std

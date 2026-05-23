@@ -177,6 +177,7 @@ class MLSurrogateCalibration(Model):
                 snapshots=self.t.tolist(),
             )
             self.abm_calls += self.num_of_simulations
-            entropy = model.run()[-1]
+            std, cluster_count, kde, hist, entropy, observations = model.run()
             self.x_train.append((d, mu))
-            self.y_train.append(self._fitness(entropy))
+            # self.y_train.append(self._fitness(entropy))
+            self.y_train.append(self._fitness_wasserstein(self.y_real, observations))

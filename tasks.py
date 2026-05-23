@@ -12,9 +12,9 @@ def task_calibration_GS(
     o_name: str,
     d_bounds: list[float],
     mu_bounds: list[float],
-    grid_size: int,
-    number_of_runs: int = 1,
-    num_of_simulations: int = 100,
+    grid_sizes: list[int],
+    number_of_runs: int,
+    num_of_simulations: int,
 ) -> list[str]:
 
     real_d = float(o_name.split("_")[2][1:])
@@ -27,78 +27,20 @@ def task_calibration_GS(
     prediction_errors: list[float] = []
     total_times: list[float] = []
     abm_calls: list[int] = []
-
-    for _ in range(number_of_runs):
-        cal = GridSearchCalibration(
-            o_name=o_name,
-            d_bounds=d_bounds,
-            mu_bounds=mu_bounds,
-            grid_size=grid_size,
-            num_of_simulations=num_of_simulations,
-            topology=topology,
-            real_d=real_d,
-            real_mu=real_mu,
-        )
-        cal.run()
-        ds.append(cal.best_params[0])
-        mus.append(cal.best_params[1])
-        fitnesses.append(cal.best_fitness)
-        prediction_errors.append(cal.prediction_error)
-        total_times.append(cal.total_time)
-        abm_calls.append(cal.abm_calls)
-    return [
-        json.dumps(
-            {
-                "model": "GS",
-                "d": np.mean(ds),
-                "mu": np.mean(mus),
-                "fitness": np.mean(fitnesses),
-                "prediction_error": np.mean(prediction_errors),
-                "total_time": np.mean(total_times),
-                "abm_calls": np.mean(abm_calls),
-            },
-            indent=0,
-        ).replace("\n", "")
-    ]
-
-
-def task_calibration_SA(
-    o_name: str,
-    d_bounds: list,
-    mu_bounds: list,
-    cooling_rates: list,
-    stop_fitness: float = 0.95,
-    number_of_runs: int = 1,
-    num_of_simulations: int = 100,
-    max_iter: int = 100,
-) -> list[str]:
-    real_d = float(o_name.split("_")[2][1:])
-    real_mu = float(o_name.split("_")[3][2:])
-    topology = o_name.split("_")[4]
     results = []
 
-    for cooling_rate in cooling_rates:
-        ds = []
-        mus = []
-        fitnesses = []
-        prediction_errors = []
-        total_times = []
-        abm_calls = []
-
-        print(f"Running Simulated Annealing with cooling_rate={cooling_rate}")
+    for grid_size in grid_sizes:
+        print(f"Running Grid Search with grid_size={grid_size}")
         for _ in range(number_of_runs):
-            cal = SimulatedAnnealingCalibration(
+            cal = GridSearchCalibration(
                 o_name=o_name,
                 d_bounds=d_bounds,
                 mu_bounds=mu_bounds,
-                initial_temp=1,
-                cooling_rate=cooling_rate,
+                grid_size=grid_size,
                 num_of_simulations=num_of_simulations,
-                max_iter=max_iter,
                 topology=topology,
                 real_d=real_d,
                 real_mu=real_mu,
-                stop_fitness=stop_fitness
             )
             cal.run()
             ds.append(cal.best_params[0])
@@ -110,8 +52,8 @@ def task_calibration_SA(
         results.append(
             json.dumps(
                 {
-                    "model": "SA",
-                    "cooling_rate": cooling_rate,
+                    "model": "GS",
+                    "grid_size": grid_size,
                     "d": np.mean(ds),
                     "mu": np.mean(mus),
                     "fitness": np.mean(fitnesses),
@@ -125,16 +67,81 @@ def task_calibration_SA(
     return results
 
 
+def task_calibration_SA(
+    o_name: str,
+    d_bounds: list[float],
+    mu_bounds: list[float],
+    cooling_rates: list[float],
+    max_iters: list[int],
+    stop_fitness: float,
+    number_of_runs: int,
+    num_of_simulations: int,
+) -> list[str]:
+    real_d = float(o_name.split("_")[2][1:])
+    real_mu = float(o_name.split("_")[3][2:])
+    topology = o_name.split("_")[4]
+    results = []
+
+    for max_iter in max_iters:
+        for cooling_rate in cooling_rates:
+            ds = []
+            mus = []
+            fitnesses = []
+            prediction_errors = []
+            total_times = []
+            abm_calls = []
+
+            print(f"Running Simulated Annealing with cooling_rate={cooling_rate}, max_iter={max_iter}")
+            for _ in range(number_of_runs):
+                cal = SimulatedAnnealingCalibration(
+                    o_name=o_name,
+                    d_bounds=d_bounds,
+                    mu_bounds=mu_bounds,
+                    initial_temp=1,
+                    cooling_rate=cooling_rate,
+                    num_of_simulations=num_of_simulations,
+                    max_iter=max_iter,
+                    topology=topology,
+                    real_d=real_d,
+                    real_mu=real_mu,
+                    stop_fitness=stop_fitness
+                )
+                cal.run()
+                ds.append(cal.best_params[0])
+                mus.append(cal.best_params[1])
+                fitnesses.append(cal.best_fitness)
+                prediction_errors.append(cal.prediction_error)
+                total_times.append(cal.total_time)
+                abm_calls.append(cal.abm_calls)
+            results.append(
+                json.dumps(
+                    {
+                        "model": "SA",
+                        "cooling_rate": cooling_rate,
+                        "max_iter": max_iter,
+                        "d": np.mean(ds),
+                        "mu": np.mean(mus),
+                        "fitness": np.mean(fitnesses),
+                        "prediction_error": np.mean(prediction_errors),
+                        "total_time": np.mean(total_times),
+                        "abm_calls": np.mean(abm_calls),
+                    },
+                    indent=0,
+                ).replace("\n", "")
+            )
+    return results
+
+
 def task_calibration_GA1(
     o_name: str,
     pcs: list,
     pms: list,
     mutation_ranges: list,
     pop_sizes: list,
-    number_of_runs=1,
-    num_of_simulations: int = 100,
-    max_iter: int = 100,
-    stop_fitness: float = 0.95,
+    number_of_runs: int,
+    num_of_simulations: int,
+    max_iter: int,
+    stop_fitness: float,
 ) -> list[str]:
     real_d = float(o_name.split("_")[2][1:])
     real_mu = float(o_name.split("_")[3][2:])
@@ -202,10 +209,10 @@ def task_calibration_GA2(
     pms: list,
     mutation_ranges: list,
     pop_sizes: list,
-    number_of_runs=1,
-    num_of_simulations: int = 100,
-    max_iter: int = 50,
-    stop_fitness: float = 0.95,
+    number_of_runs: int,
+    num_of_simulations: int,
+    max_iter: int,
+    stop_fitness: float,
 ) -> list[str]:
     real_d = float(o_name.split("_")[2][1:])
     real_mu = float(o_name.split("_")[3][2:])
@@ -240,8 +247,8 @@ def task_calibration_GA2(
                 real_d=real_d,
                 real_mu=real_mu,
                 beta=6,
-                gamma_L=2,
-                gamma_U=10,
+                gamma_L=0,
+                gamma_U=0.5,
                 alpha=0.2,
             )
             cal.run()
@@ -277,10 +284,10 @@ def task_calibration_ML_surrogate(
     surrogate: str,
     pool_sizes: list[int],
     sample_sizes: list[int],
-    number_of_runs: int = 1,
-    num_of_simulations: int = 100,
-    max_iter: int = 50,
-    stop_fitness: float = 0.95,
+    number_of_runs: int,
+    num_of_simulations: int,
+    max_iter: int,
+    stop_fitness: float,
 ) -> list[str]:
     real_d = float(o_name.split("_")[2][1:])
     real_mu = float(o_name.split("_")[3][2:])

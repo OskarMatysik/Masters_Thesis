@@ -123,6 +123,7 @@ class DeffuantWeisbuchModel:
             kde = gaussian_kde(self.x)(np.linspace(0, 1, 100))
             hist = np.histogram(self.x, bins=11, range=(0, 1), density=True)[0]
             entropy = float(differential_entropy(self.x, method="vasicek"))
+            observations = self.x
         else:
             std = [float(np.std(self.history[t])) for t in snapshots]
             cluster_count = [self._clusters(t)[0] for t in snapshots]
@@ -138,8 +139,9 @@ class DeffuantWeisbuchModel:
                 )
                 for t in snapshots
             ]
+            observations = np.array([self.history[t] for t in snapshots])
 
-        return std, cluster_count, cluster_sizes, kde, hist, entropy
+        return std, cluster_count, cluster_sizes, kde, hist, entropy, observations
 
     def export_data(self) -> None:
         """Export opinions of agents at random time steps to a file."""

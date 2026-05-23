@@ -49,7 +49,7 @@ def create_error_visualization(d, mu):
                     num_of_runs=1,
                 )
                 stats = cal.run()
-                std, cluster, kde, hist, entropy = stats
+                std, cluster, kde, hist, entropy, observations = stats
                 entropies[row, col] = entropy[0]
                 print(f"Completed d={d_val:.2f}, mu={mu_val:.2f}")
         
@@ -167,17 +167,20 @@ def plot_parameter_space_with_real_values(parameter_sets):
     
     ax.set_xlabel("d (Confidence Threshold)", fontsize=12, fontweight="bold")
     ax.set_ylabel("mu (Convergence Rate)", fontsize=12, fontweight="bold")
+    ax.set_xlim(0, 0.5)
+    ax.set_ylim(0, 0.5)
     ax.set_title("Parameter Space with Calibration Results", fontsize=14, fontweight="bold")
     ax.grid(True, alpha=0.3, linestyle="--")
     ax.legend(fontsize=11, loc='best')
     
     fig.tight_layout()
-    fig.savefig("results/parameter_space_scatter.png", dpi=300, bbox_inches="tight")
-    print("Visualization saved to results/parameter_space_scatter.png")
+    fig.savefig(f"parameter_space_scatter_{parameter_sets[0]}.png", dpi=300, bbox_inches="tight")
     plt.close()
 
 if __name__ == "__main__":
-    create_error_visualization(0.2, 0.2)
-    plot_parameter_space_with_real_values(
-        parameter_sets=[(0.05, 0.05), (0.1, 0.1), (0.2, 0.2), (0.3, 0.3), (0.4, 0.4)],
-    )
+    # create_error_visualization(0.2, 0.2)
+    # plot_parameter_space_with_real_values(parameter_sets=[(0.1, 0.1)])
+    # plot_parameter_space_with_real_values(parameter_sets=[(0.2, 0.2)])
+    # plot_parameter_space_with_real_values(parameter_sets=[(0.4, 0.4)])
+    plot_parameter_space_with_real_values(parameter_sets=[(0.1, 0.4)])
+

@@ -66,8 +66,9 @@ class GridSearchCalibration(Model):
                 snapshots=self.t.tolist(),
             )
             self.abm_calls += self.num_of_simulations
-            std, cluster_count, kde, hist, entropy = sim.run()
-            fitness = self._fitness(entropy)
+            std, cluster_count, kde, hist, entropy, observations = sim.run()
+            # fitness = self._fitness(entropy)
+            fitness = self._fitness_wasserstein(self.y_real, observations)
             self.fitness_grid[i] = fitness
 
         best_idx = np.argmax(self.fitness_grid)
@@ -127,8 +128,9 @@ class SimulatedAnnealingCalibration(Model):
             snapshots=self.t.tolist(),
         )
         self.abm_calls += self.num_of_simulations
-        entropy = sim.run()[-1]
-        max_fitness = self._fitness(entropy)
+        std, cluster_count, kde, hist, entropy, observations = sim.run()
+        # max_fitness = self._fitness(entropy)
+        max_fitness = self._fitness_wasserstein(self.y_real, observations)
         temp = self.initial_temp
         if self.log:
             print(
@@ -162,7 +164,7 @@ class SimulatedAnnealingCalibration(Model):
                 snapshots=self.t.tolist(),
             )
             self.abm_calls += self.num_of_simulations
-            std, cluster_count, kde, hist, entropy = sim.run()
+            std, cluster_count, kde, hist, entropy, observations = sim.run()
             fitness = self._fitness(entropy)
             if fitness > max_fitness or np.random.rand() < np.exp(
                 (fitness - max_fitness) / temp

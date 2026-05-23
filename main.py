@@ -40,24 +40,28 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # GS parameters
+    grid_sizes = [23, 32, 45]
+
     # GA parameters
     pcs = [0.6, 0.7, 0.8]
     pms = [0.05, 0.1, 0.15]
     mutation_ranges = [0.005]
-    pop_sizes = [10, 30, 50]
+    pop_sizes = [16, 32, 64]
 
     # SA parameters
     cooling_rates = [0.85, 0.9, 0.95]
+    sa_max_iter = [512, 1024, 2048]
 
     # ML Surrogate parameters
     surrogates = ["GBR", "RFR", "MLP", "XGB"]
-    pool_sizes = [256, 512, 1024]
+    pool_sizes = [512, 1024, 2048]
     sample_sizes = [10, 15, 20]
 
     # Global parameters
     num_of_simulations = 20
     number_of_runs = 1
-    stop_fitness = 0.98
+    stop_fitness = 0.97
 
     # max_iter = 50
     # num_of_simulations = 10
@@ -74,7 +78,7 @@ if __name__ == "__main__":
             o_name,
             d_bounds=[0.01, 0.5],
             mu_bounds=[0.01, 0.5],
-            grid_size=32,
+            grid_sizes=grid_sizes,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
         )
@@ -88,7 +92,7 @@ if __name__ == "__main__":
             cooling_rates=cooling_rates,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
-            max_iter=1024,
+            max_iters=sa_max_iter,
             stop_fitness=stop_fitness
         )
     )
@@ -101,7 +105,7 @@ if __name__ == "__main__":
             pop_sizes=pop_sizes,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
-            max_iter=20,
+            max_iter=32,
             stop_fitness=stop_fitness,
         )
     )
@@ -114,7 +118,7 @@ if __name__ == "__main__":
             pop_sizes=pop_sizes,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
-            max_iter=20,
+            max_iter=32,
             stop_fitness=stop_fitness,
         )
     )
