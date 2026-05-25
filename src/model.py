@@ -68,24 +68,23 @@ class Model:
         error = 0
         for i in range(len(y_real)):
             kde_real = gaussian_kde(y_real[i])(np.linspace(0, 1, 100))
-            error += np.sum((kde_real - kde_pred[i]) ** 2)
+            error += np.sum(np.abs(kde_real - kde_pred[i]))
         return 1 / (1 + error)
     
     def _fitness_hist(self, y_real, hist_pred):
         """Calculate fitness based on MSE between real and predicted histograms."""
         error = 0
         for i in range(len(y_real)):
-            hist_real = np.histogram(y_real[i], bins=11, range=(0, 1), density=True)[0]
-            error += np.sum((hist_real - hist_pred[i]) ** 2)
+            hist_real = np.histogram(y_real[i], bins=11, range=(0, 1))[0]
+            hist_real = hist_real
+            error += np.sum(np.abs(hist_real - hist_pred[i]))/np.sum(hist_real)
         return 1 / (1 + error)
     
     def _fitness_wasserstein(self, y_real, observations_pred):
         """Calculate fitness based on Wasserstein distance between real and predicted observations."""
 
-        distances = [[], []]
+        distances = [[] for _ in range(len(y_real))]
         for t in range(len(y_real)):
             for observation in observations_pred[t]:
                 distances[t].append(wasserstein_distance(y_real[t], observation))
-            # distances.append([wasserstein_distance(y_real[i], obs[i]) for obs in observations_pred])
-        # breakpoint()
         return 1 / (1 + np.sum(np.mean(np.array(distances), axis=1)))

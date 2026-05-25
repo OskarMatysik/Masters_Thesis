@@ -314,6 +314,178 @@ def polarization_heatmap(snapshot):
     plt.close()
 
 
+def all_methods(d_ref, mu_ref, snapshot1, snapshot2):
+    """
+    Create fitness heatmaps based on differences in multiple statistics across two snapshots.
+    Calculates fitness as 1/(1 + difference_at_snapshot1 + difference_at_snapshot2) for:
+    - Entropy difference
+    - Wasserstein distance difference
+    - Polarization difference
+    - Histogram sum of absolute differences
+    
+    Args:
+        d_ref: Reference d parameter
+        mu_ref: Reference mu parameter
+        snapshot1: First time snapshot to analyze
+        snapshot2: Second time snapshot to analyze
+    """
+    ds = np.linspace(0.05, 0.5, 10)
+    mus = np.linspace(0.05, 0.5, 10)
+    max_snapshot = max(snapshot1, snapshot2)
+    snapshots = [snapshot1, snapshot2]
+    
+    # Get reference statistics for both snapshots
+    cal_ref = MultiDW(
+        N=1000,
+        d=d_ref,
+        mu=mu_ref,
+        t=max_snapshot+1,
+        topology="full",
+        num_of_runs=5,
+        snapshots=snapshots,
+    )
+    stats_ref = cal_ref.run()
+    std_ref, cluster_count_ref, kde_ref, hist_ref, entropy_ref, observations_ref = stats_ref
+    
+    # Extract reference values for both snapshots
+    ref_entropy_s1 = entropy_ref[0]  # First snapshot
+    ref_entropy_s2 = entropy_ref[1]  # Second snapshot
+    ref_std_s1 = std_ref[0]
+    ref_std_s2 = std_ref[1]
+    ref_hist_s1 = np.array(hist_ref[0]) / np.sum(hist_ref[0])  # Normalize to probabilities
+    ref_hist_s2 = np.array(hist_ref[1]) / np.sum(hist_ref[1])
+    
+    # Get reference observations and compute derived metrics for both snapshots
+    ref_obs_list_s1 = [np.array(obs[0]) for obs in observations_ref]
+    ref_obs_list_s2 = [np.array(obs[1]) for obs in observations_ref]
+    
+    # Reference polarization for both snapshots
+    ref_polarizations_s1 = [_calculate_polarization(obs) for obs in ref_obs_list_s1]
+    ref_polarization_s1 = np.mean(ref_polarizations_s1)
+    ref_polarizations_s2 = [_calculate_polarization(obs) for obs in ref_obs_list_s2]
+    ref_polarization_s2 = np.mean(ref_polarizations_s2)
+    
+    # Reference Wasserstein for both snapshots
+    ref_wasserstein_dists_s1 = [wasserstein_distance(ref_obs_list_s1[0], obs) for obs in ref_obs_list_s1[1:]]
+    ref_wasserstein_s1 = np.mean(ref_wasserstein_dists_s1) if ref_wasserstein_dists_s1 else 0.0
+    ref_wasserstein_dists_s2 = [wasserstein_distance(ref_obs_list_s2[0], obs) for obs in ref_obs_list_s2[1:]]
+    ref_wasserstein_s2 = np.mean(ref_wasserstein_dists_s2) if ref_wasserstein_dists_s2 else 0.0
+    
+    print(f"Reference model (d={d_ref}, mu={mu_ref}) completed")
+    print(f"  Snapshot {snapshot1}: Entropy={ref_entropy_s1:.6f}, Std={ref_std_s1:.6f}, Polarization={ref_polarization_s1:.6f}, Wasserstein={ref_wasserstein_s1:.6f}")
+    print(f"  Snapshot {snapshot2}: Entropy={ref_entropy_s2:.6f}, Std={ref_std_s2:.6f}, Polarization={ref_polarization_s2:.6f}, Wasserstein={ref_wasserstein_s2:.6f}")
+    
+    # Initialize fitness arrays
+    entropy_fitness = np.zeros((len(mus), len(ds)))
+    std_fitness = np.zeros((len(mus), len(ds)))
+    wasserstein_fitness = np.zeros((len(mus), len(ds)))
+    polarization_fitness = np.zeros((len(mus), len(ds)))
+    histogram_fitness = np.zeros((len(mus), len(ds)))
+    combined_fitness = np.zeros((len(mus), len(ds)))
+
+    for row, mu in enumerate(mus):
+        for col, d in enumerate(ds):
+            cal = MultiDW(
+                N=1000,
+                d=d,
+                mu=mu,
+                t=max_snapshot+1,
+                topology="full",
+                num_of_runs=20,
+                snapshots=snapshots,
+            )
+            stats = cal.run()
+            std, cluster_count, kde, hist, entropy, observations = stats
+            
+            # Extract values for both snapshots
+            curr_entropy_s1 = entropy[0]
+            curr_entropy_s2 = entropy[1]
+            curr_std_s1 = std[0]
+            curr_std_s2 = std[1]
+            curr_hist_s1 = np.array(hist[0]) / np.sum(hist[0])
+            curr_hist_s2 = np.array(hist[1]) / np.sum(hist[1])
+            
+            # Get observations for both snapshots
+            curr_obs_list_s1 = [np.array(obs[0]) for obs in observations]
+            curr_obs_list_s2 = [np.array(obs[1]) for obs in observations]
+            
+            # Calculate polarization for both snapshots
+            curr_polarizations_s1 = [_calculate_polarization(obs) for obs in curr_obs_list_s1]
+            curr_polarization_s1 = np.mean(curr_polarizations_s1)
+            curr_polarizations_s2 = [_calculate_polarization(obs) for obs in curr_obs_list_s2]
+            curr_polarization_s2 = np.mean(curr_polarizations_s2)
+            
+            # Calculate Wasserstein distances for both snapshots
+            curr_wasserstein_dists_s1 = [wasserstein_distance(ref_obs_list_s1[0], obs) for obs in curr_obs_list_s1]
+            curr_wasserstein_s1 = np.mean(curr_wasserstein_dists_s1)
+            curr_wasserstein_dists_s2 = [wasserstein_distance(ref_obs_list_s2[0], obs) for obs in curr_obs_list_s2]
+            curr_wasserstein_s2 = np.mean(curr_wasserstein_dists_s2)
+            
+            # Calculate differences for both snapshots and combine
+            entropy_diff_s1 = np.abs(curr_entropy_s1 - ref_entropy_s1)
+            entropy_diff_s2 = np.abs(curr_entropy_s2 - ref_entropy_s2)
+            entropy_fitness[row, col] = 1.0 / (1.0 + entropy_diff_s1 + entropy_diff_s2)
+            
+            std_diff_s1 = np.abs(curr_std_s1 - ref_std_s1)
+            std_diff_s2 = np.abs(curr_std_s2 - ref_std_s2)
+            std_fitness[row, col] = 1.0 / (1.0 + std_diff_s1 + std_diff_s2)
+            
+            wasserstein_diff_s1 = np.abs(curr_wasserstein_s1 - ref_wasserstein_s1)
+            wasserstein_diff_s2 = np.abs(curr_wasserstein_s2 - ref_wasserstein_s2)
+            wasserstein_fitness[row, col] = 1.0 / (1.0 + wasserstein_diff_s1 + wasserstein_diff_s2)
+            
+            polarization_diff_s1 = np.abs(curr_polarization_s1 - ref_polarization_s1)
+            polarization_diff_s2 = np.abs(curr_polarization_s2 - ref_polarization_s2)
+            polarization_fitness[row, col] = 1.0 / (1.0 + polarization_diff_s1 + polarization_diff_s2)
+            
+            hist_diff_s1 = np.sum(np.abs(curr_hist_s1 - ref_hist_s1))
+            hist_diff_s2 = np.sum(np.abs(curr_hist_s2 - ref_hist_s2))
+            histogram_fitness[row, col] = 1.0 / (1.0 + hist_diff_s1 + hist_diff_s2)
+            
+            # Combined fitness: weighted combination of histogram and Wasserstein distance
+            combined_metric = ((hist_diff_s1 + hist_diff_s2) / 4.0) + ((wasserstein_diff_s1 + wasserstein_diff_s2) / 2.0)
+            combined_fitness[row, col] = 1.0 / (1.0 + combined_metric)
+            
+            # Debug on first iteration
+            if row == 0 and col == 0:
+                print(f"  First point (d={d}, mu={mu}) - Snapshot 1: entropy_diff={entropy_diff_s1:.6f}, Snapshot 2: entropy_diff={entropy_diff_s2:.6f}")
+            
+            print(f"Completed d={d}, mu={mu}")
+    
+    # Calculate extent to align pixels with data points
+    data_step = ds[1] - ds[0]
+    extent_min = ds[0] - data_step / 2
+    extent_max = ds[-1] + data_step / 2
+    
+    # Create heatmaps for each metric
+    metrics = [
+        ("Entropy", entropy_fitness),
+        ("Std Deviation", std_fitness),
+        ("Wasserstein Distance", wasserstein_fitness),
+        ("Polarization", polarization_fitness),
+        ("Histogram", histogram_fitness),
+        ("Combined", combined_fitness),
+    ]
+    
+    for metric_name, fitness_values in metrics:
+        plt.figure(figsize=(10, 6))
+        ax = plt.gca()
+        im = ax.imshow(fitness_values, extent=(extent_min, extent_max, extent_min, extent_max), 
+                       origin="lower", aspect="auto", vmin=0, vmax=1, cmap="viridis")
+        ax.set_xticks(ds)
+        ax.set_xticklabels([f"{val:.2f}" for val in ds])
+        ax.set_yticks(mus)
+        ax.set_yticklabels([f"{val:.2f}" for val in mus])
+        plt.colorbar(im, label="Fitness")
+        plt.title(f"{metric_name} Fitness at t={snapshot1+1},{snapshot2+1} (ref: d={d_ref}, mu={mu_ref})")
+        plt.xlabel("d")
+        plt.ylabel("mu")
+        plt.tight_layout()
+        plt.savefig(f"fitness_{metric_name.lower().replace(' ', '_')}_d{d_ref}_mu{mu_ref}_t{snapshot1+1}_{snapshot2+1}.png")
+        plt.close()
+        print(f"Saved fitness_{metric_name.lower().replace(' ', '_')}_d{d_ref}_mu{mu_ref}_t{snapshot1+1}_{snapshot2+1}.png")
+
+
 def _calculate_polarization(observations, alpha=0.0):
     """
     Calculate Esteban-Ray polarization coefficient from agent observations.
@@ -356,8 +528,12 @@ if __name__ == "__main__":
     # test_entropy_std()
     # kde_difference_heatmap(d_ref=0.1, mu_ref=0.1)
     # kde_difference_heatmap(d_ref=0.4, mu_ref=0.4)
-    wasserstein_distance_heatmap(d_ref=0.25, mu_ref=0.25, snapshot=50)
+    # wasserstein_distance_heatmap(d_ref=0.25, mu_ref=0.25, snapshot=50)
     # polarization_heatmap(snapshot=14)
+    # all_methods(d_ref=0.25, mu_ref=0.25, snapshot=14)
+    all_methods(d_ref=0.1, mu_ref=0.4, snapshot1=14, snapshot2=49)
+    all_methods(d_ref=0.4, mu_ref=0.1, snapshot1=14, snapshot2=49)
+    all_methods(d_ref=0.25, mu_ref=0.25, snapshot1=14, snapshot2=49)
 
 
 

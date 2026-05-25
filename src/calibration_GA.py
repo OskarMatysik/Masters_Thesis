@@ -105,8 +105,7 @@ class GA1Calibration(GACalibration):
                 )
                 self.abm_calls += self.num_of_simulations
                 std, cluster_count, kde, hist, entropy, observations = multi_model.run()
-                # fitness_values[chr_id] = self._fitness(entropy)
-                fitness_values[chr_id] = self._fitness_wasserstein(self.y_real, observations)
+                fitness_values[chr_id] = self._fitness_hist(self.y_real, hist)
 
             for _ in range(int(self.pop_size * self.p_c // 2)):
                 tournament = np.sort(np.random.choice(self.pop_size, 3, replace=False))
@@ -138,7 +137,6 @@ class GA1Calibration(GACalibration):
                     new_population[chr_id][1] = np.clip(
                         new_value_mu, self.mu_bounds[0], self.mu_bounds[1]
                     )
-
             if self.log:
                 print(f"Iteration: {i}, Best fit: {max(fitness_values)}")
             if max(fitness_values) >= self.stop_fitness:
@@ -250,9 +248,7 @@ class GA2Calibration(GACalibration):
         for i in range(len(y_real)):
             distances.append([wasserstein_distance(y_real[i], obs[i]) for obs in observations_pred])
         fitness = 1 / (1 + np.sum(np.mean(np.array(distances), axis=1)))
-        # if np.any(np.array(distances) >= self.gamma_t):
-        #     return 0
-        return fitness if fitness > self.gamma_t else 0
+        return fitness if fitness > 1 - self.gamma_t else 0
 
     @override
     def run(self) -> None:
@@ -286,11 +282,10 @@ class GA2Calibration(GACalibration):
                 )
                 self.abm_calls += self.num_of_simulations
                 std, cluster_count, kde, hist, entropy, observations = multi_model.run()
-                # fitness_values[chr_id] = self._fitness(entropy)
-                fitness_values[chr_id] = self._fitness_wasserstein(self.y_real, observations)
+                # fitness_values[chr_id] = self._fitness_wasserstein(self.y_real, observations)
+                fitness_values[chr_id] = self._fitness_hist(self.y_real, hist)
 
             fitness_values.round(decimals=self.beta)  # 4a
-
             zeros = np.where(fitness_values == 0)[0]
             fitness_values = np.delete(fitness_values, zeros)  # 4d
             population = np.delete(population, zeros, axis=0)  # 4d

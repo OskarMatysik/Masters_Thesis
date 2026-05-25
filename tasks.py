@@ -167,8 +167,8 @@ def task_calibration_GA1(
                 p_m=pm,
                 max_iter=max_iter,
                 stop_fitness=stop_fitness,
-                d_bounds=[0, 0.5],
-                mu_bounds=[0, 0.5],
+                d_bounds=[0.05, 0.5],
+                mu_bounds=[0.05, 0.5],
                 mutation_range=mutation_range,
                 topology=topology,
                 num_of_simulations=num_of_simulations,
@@ -239,16 +239,16 @@ def task_calibration_GA2(
                 p_m=pm,
                 max_iter=max_iter,
                 stop_fitness=stop_fitness,
-                d_bounds=[0, 0.5],
-                mu_bounds=[0, 0.5],
+                d_bounds=[0.05, 0.5],
+                mu_bounds=[0.05, 0.5],
                 mutation_range=mutation_range,
                 topology=topology,
                 num_of_simulations=num_of_simulations,
                 real_d=real_d,
                 real_mu=real_mu,
                 beta=6,
-                gamma_L=0,
-                gamma_U=0.5,
+                gamma_L=0.2,
+                gamma_U=0.65,
                 alpha=0.2,
             )
             cal.run()
@@ -317,8 +317,8 @@ def task_calibration_ML_surrogate(
                     topology=topology,
                     real_d=real_d,
                     real_mu=real_mu,
-                    d_bounds=[0, 0.5],
-                    mu_bounds=[0, 0.5],
+                    d_bounds=[0.05, 0.5],
+                    mu_bounds=[0.05, 0.5],
                 )
                 cal.run()
                 ds.append(cal.best_params[0])

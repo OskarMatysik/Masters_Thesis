@@ -100,7 +100,6 @@ class MultiDW:
                         hist[i].append(h)
                         entropy[i].append(e)
                         observations[i].append(obs)
-                        # breakpoint()
 
             return (
                 [np.mean(s).astype(float) for s in std],

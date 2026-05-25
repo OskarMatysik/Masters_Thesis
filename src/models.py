@@ -63,8 +63,10 @@ class DeffuantWeisbuchModel:
             i = np.random.choice(self.N)
             j = np.random.choice(np.argwhere(self.neighborhood[i]).flatten())
             if np.abs(self.x[i] - self.x[j]) < self.d:
-                self.x[i] += self.mu * (self.x[j] - self.x[i])
-                self.x[j] += self.mu * (self.x[i] - self.x[j])
+                self.x[i], self.x[j] = (
+                    self.x[i] + self.mu * (self.x[j] - self.x[i]),
+                    self.x[j] + self.mu * (self.x[i] - self.x[j]),
+                )
 
     def _generate_topology(self) -> np.ndarray:
         """Generate the topology of the network."""
@@ -129,7 +131,7 @@ class DeffuantWeisbuchModel:
             cluster_count = [self._clusters(t)[0] for t in snapshots]
             cluster_sizes = [self._clusters(t)[1] for t in snapshots]
             kde = [gaussian_kde(self.history[t])(np.linspace(0, 1, 100)) for t in snapshots]
-            hist = [np.histogram(self.history[t], bins=11, range=(0, 1), density=True)[0] for t in snapshots]
+            hist = [np.histogram(self.history[t], bins=11, range=(0, 1))[0] for t in snapshots]
             entropy = [
                 float(
                     differential_entropy(

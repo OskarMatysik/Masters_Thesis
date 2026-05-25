@@ -47,7 +47,7 @@ if __name__ == "__main__":
     pcs = [0.6, 0.7, 0.8]
     pms = [0.05, 0.1, 0.15]
     mutation_ranges = [0.005]
-    pop_sizes = [16, 32, 64]
+    pop_sizes = [8, 16, 32]
 
     # SA parameters
     cooling_rates = [0.85, 0.9, 0.95]
@@ -61,14 +61,7 @@ if __name__ == "__main__":
     # Global parameters
     num_of_simulations = 20
     number_of_runs = 1
-    stop_fitness = 0.97
-
-    # max_iter = 50
-    # num_of_simulations = 10
-    # number_of_runs = 1
-    # stop_fitness = 0.98
-    # pool_sizes = [1024]
-    # sample_sizes = [30]
+    stop_fitness = 0.85
 
     results = []
     o_name = f"o_N{args.N}_d{args.d}_mu{args.mu}_{args.topology}"
@@ -76,8 +69,8 @@ if __name__ == "__main__":
     results.extend(
         task_calibration_GS(
             o_name,
-            d_bounds=[0.01, 0.5],
-            mu_bounds=[0.01, 0.5],
+            d_bounds=[0.05, 0.5],
+            mu_bounds=[0.05, 0.5],
             grid_sizes=grid_sizes,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
@@ -87,8 +80,8 @@ if __name__ == "__main__":
     results.extend(
         task_calibration_SA(
             o_name,
-            d_bounds=[0.01, 0.5],
-            mu_bounds=[0.01, 0.5],
+            d_bounds=[0.05, 0.5],
+            mu_bounds=[0.05, 0.5],
             cooling_rates=cooling_rates,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
@@ -105,20 +98,7 @@ if __name__ == "__main__":
             pop_sizes=pop_sizes,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
-            max_iter=32,
-            stop_fitness=stop_fitness,
-        )
-    )
-    results.extend(
-        task_calibration_GA2(
-            o_name,
-            pcs=pcs,
-            pms=pms,
-            mutation_ranges=mutation_ranges,
-            pop_sizes=pop_sizes,
-            number_of_runs=number_of_runs,
-            num_of_simulations=num_of_simulations,
-            max_iter=32,
+            max_iter=64,
             stop_fitness=stop_fitness,
         )
     )
@@ -135,22 +115,6 @@ if __name__ == "__main__":
                 stop_fitness=stop_fitness,
             )
         )
-
-    # try:
-    #     results.extend(
-    #         task_calibration_ML_surrogate(
-    #             o_name,
-    #             "GPR",
-    #             pool_sizes,
-    #             sample_sizes,
-    #             number_of_runs,
-    #             num_of_simulations,
-    #             max_iter,
-    #             stop_fitness,
-    #         )
-    #     ) 
-    # except:
-    #     print("GPR calibration failed.")
 
     with open(f"results/calibration_results_{o_name}.jsonl", "w") as f:
         f.writelines(result + "\n" for result in results)
