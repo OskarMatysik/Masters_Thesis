@@ -52,31 +52,28 @@ class MultiDW:
             chunk_results.append(model.statistics(self.snapshots))
         return chunk_results
 
-    def statistics(self, results) -> tuple[list[float], list[float], list[list], list[list], list[float], list[np.ndarray]]:
+    def statistics(self, results) -> tuple[list[float], list[float], list[list], list[float], list[np.ndarray]]:
         """Calculate average statistics of the results.
         If snapshots is None return statistics for final opinions"""
         if self.snapshots is None:
             std = []
             num_of_clusters = []
             cluster_sizes = []
-            kdes = []
             hist = []
             entropy = []
             observations = []
             for chunk in results:
                 for result in chunk:
-                    s, cc, cs, kde, h, e, obs = result
+                    s, cc, cs, h, e, obs = result
                     std.append(s)
                     num_of_clusters.append(cc)
                     cluster_sizes.extend(cs)
-                    kdes.append(kde)
                     hist.append(h)
                     entropy.append(e)
                     observations.append(obs)
             return (
                 [np.mean(std).astype(float)],
                 [np.mean(num_of_clusters).astype(float)],
-                [np.mean(kdes, axis=0)],
                 [np.mean(hist, axis=0)],
                 [np.mean(entropy).astype(float)],
                 [np.array(observations)],
@@ -85,18 +82,16 @@ class MultiDW:
             std = [[] for _ in range(len(self.snapshots))]
             num_of_clusters = [[] for _ in range(len(self.snapshots))]
             cluster_sizes = [[] for _ in range(len(self.snapshots))]
-            kdes = [[] for _ in range(len(self.snapshots))]
             hist = [[] for _ in range(len(self.snapshots))]
             entropy = [[] for _ in range(len(self.snapshots))]
             observations = [[] for _ in range(len(self.snapshots))]
             for chunk in results:
                 for result in chunk:
                     for i in range(len(self.snapshots)):
-                        s, cc, cs, kde, h, e, obs = [result[stat_id][i] for stat_id in range(7)]
+                        s, cc, cs, h, e, obs = [result[stat_id][i] for stat_id in range(6)]
                         std[i].append(s)
                         num_of_clusters[i].append(cc)
                         cluster_sizes[i].append(cs)
-                        kdes[i].append(kde)
                         hist[i].append(h)
                         entropy[i].append(e)
                         observations[i].append(obs)
@@ -104,7 +99,6 @@ class MultiDW:
             return (
                 [np.mean(s).astype(float) for s in std],
                 [np.mean(cc).astype(float) for cc in num_of_clusters],
-                [np.mean(kde, axis=0) for kde in kdes],
                 [np.mean(h, axis=0) for h in hist],
                 [np.mean(e).astype(float) for e in entropy],
                 [np.array(obs) for obs in observations],

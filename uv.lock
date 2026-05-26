@@ -269,17 +269,6 @@ wheels = [
 ]
 
 [[package]]
-name = "polapy"
-version = "0.0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "scipy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/e5/2f/76609f2e892f53be73140a8313af69434f08a29a20b5f47dfe4f7ae1ccda/polapy-0.0.2.tar.gz", hash = "sha256:5e05777c54cfd8daec3ea81e42048902fb6828448c8a0884cb4192dad6a27f8a", size = 4341, upload-time = "2023-10-18T15:56:37.293Z" }
-
-[[package]]
 name = "praca-magisterska"
 version = "0.1.0"
 source = { virtual = "." }
@@ -288,7 +277,6 @@ dependencies = [
     { name = "networkx" },
     { name = "numpy" },
     { name = "pandas" },
-    { name = "polapy" },
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "xgboost" },
@@ -300,7 +288,6 @@ requires-dist = [
     { name = "networkx", specifier = ">=3.6.1" },
     { name = "numpy", specifier = ">=2.4.2" },
     { name = "pandas", specifier = ">=3.0.1" },
-    { name = "polapy", specifier = ">=0.0.2" },
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "scipy", specifier = ">=1.17.1" },
     { name = "xgboost", specifier = ">=3.2.0" },

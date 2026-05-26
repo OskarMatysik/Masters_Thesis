@@ -61,7 +61,7 @@ if __name__ == "__main__":
     # Global parameters
     num_of_simulations = 20
     number_of_runs = 1
-    stop_fitness = 0.85
+    stop_fitness = 0.9
 
     results = []
     o_name = f"o_N{args.N}_d{args.d}_mu{args.mu}_{args.topology}"

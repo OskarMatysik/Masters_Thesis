@@ -62,7 +62,7 @@ if __name__ == "__main__":
     max_iter = 100
     results = []
 
-    N, d, mu, topology = 1000, 0.15, 0.4, "full"
+    N, d, mu, topology = 1000, 0.4, 0.4, "full"
     o_name = f"o_N{N}_d{d}_mu{mu}_{topology}"
 
     # results.extend(
@@ -75,18 +75,18 @@ if __name__ == "__main__":
     #         num_of_simulations=num_of_simulations,
     #     )
     # )
-    results.extend(
-        task_calibration_SA(
-            o_name,
-            d_bounds=[0.05, 0.5],
-            mu_bounds=[0.05, 0.5],
-            cooling_rates=cooling_rates,
-            number_of_runs=number_of_runs,
-            num_of_simulations=num_of_simulations,
-            max_iters=[1024],
-            stop_fitness=stop_fitness
-        )
-    )
+    # results.extend(
+    #     task_calibration_SA(
+    #         o_name,
+    #         d_bounds=[0.05, 0.5],
+    #         mu_bounds=[0.05, 0.5],
+    #         cooling_rates=cooling_rates,
+    #         number_of_runs=number_of_runs,
+    #         num_of_simulations=num_of_simulations,
+    #         max_iters=[1024],
+    #         stop_fitness=stop_fitness
+    #     )
+    # )
     results.extend(
         task_calibration_GA1(
             o_name,
@@ -96,7 +96,7 @@ if __name__ == "__main__":
             pop_sizes=pop_sizes,
             number_of_runs=number_of_runs,
             num_of_simulations=num_of_simulations,
-            max_iter=32,
+            max_iter=3,
             stop_fitness=stop_fitness,
         )
     )
@@ -113,19 +113,19 @@ if __name__ == "__main__":
     #         stop_fitness=stop_fitness,
     #     )
     # )
-    for surrogate in surrogates:
-        results.extend(
-            task_calibration_ML_surrogate(
-                o_name,
-                surrogate=surrogate,
-                pool_sizes=pool_sizes,
-                sample_sizes=sample_sizes,
-                number_of_runs=number_of_runs,
-                num_of_simulations=num_of_simulations,
-                max_iter=1000, # doesnt matter
-                stop_fitness=stop_fitness,
-            )
-        )
+    # for surrogate in surrogates:
+    #     results.extend(
+    #         task_calibration_ML_surrogate(
+    #             o_name,
+    #             surrogate=surrogate,
+    #             pool_sizes=pool_sizes,
+    #             sample_sizes=sample_sizes,
+    #             number_of_runs=number_of_runs,
+    #             num_of_simulations=num_of_simulations,
+    #             max_iter=1000, # doesnt matter
+    #             stop_fitness=stop_fitness,
+    #         )
+    #     )
 
     with open(f"results/calibration_results_{o_name}.jsonl", "w") as f:
         f.writelines(result + "\n" for result in results)

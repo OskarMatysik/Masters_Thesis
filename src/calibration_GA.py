@@ -104,7 +104,7 @@ class GA1Calibration(GACalibration):
                     snapshots=self.t.tolist(),
                 )
                 self.abm_calls += self.num_of_simulations
-                std, cluster_count, kde, hist, entropy, observations = multi_model.run()
+                std, cluster_count, hist, entropy, observations = multi_model.run()
                 fitness_values[chr_id] = self._fitness_hist(self.y_real, hist)
 
             for _ in range(int(self.pop_size * self.p_c // 2)):
@@ -281,7 +281,7 @@ class GA2Calibration(GACalibration):
                     snapshots=self.t.tolist(),
                 )
                 self.abm_calls += self.num_of_simulations
-                std, cluster_count, kde, hist, entropy, observations = multi_model.run()
+                std, cluster_count, hist, entropy, observations = multi_model.run()
                 # fitness_values[chr_id] = self._fitness_wasserstein(self.y_real, observations)
                 fitness_values[chr_id] = self._fitness_hist(self.y_real, hist)
 
