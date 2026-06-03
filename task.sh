@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#SBATCH -c16
+#SBATCH -c20
 #SBATCH --mem=45gb
-#SBATCH --time=72:00:00
+#SBATCH --time=96:00:00
 #SBATCH --mail-user=268748@student.pwr.edu.pl
 #SBATCH --job-name=Deffuant_Weisbuch_Calibration_ML
 

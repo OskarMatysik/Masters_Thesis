@@ -26,7 +26,7 @@ def test_entropy_std():
                 snapshots=snapshots,
             )
             stats = cal.run()
-            std, cluster, kde, hist, entropy, observations = stats
+            std, cluster, hist, entropy, observations = stats
             entropies[:, row, col] = entropy
             stds[:, row, col] = std
             clusters[:, row, col] = cluster
@@ -79,100 +79,6 @@ def test_entropy_std():
         plt.tight_layout()
         plt.savefig(f"results/clusters_{snapshot+1}.png")
 
-
-def kde_difference_heatmap(d_ref, mu_ref):
-    """
-    Create heatmaps showing the sum of absolute differences in KDE
-    between the model with reference parameters (d_ref, mu_ref) and
-    each grid point in the d-mu parameter space.
-    
-    Args:
-        d_ref: Reference d parameter
-        mu_ref: Reference mu parameter
-    """
-    ds = np.linspace(0.05, 0.5, 10)
-    mus = np.linspace(0.05, 0.5, 10)
-    snapshots = [49]
-    
-    # Get reference KDE
-    cal_ref = MultiDW(
-        N=1000,
-        d=d_ref,
-        mu=mu_ref,
-        t=int(10 * (3 + 1 / mu_ref)),
-        topology="full",
-        num_of_runs=5,
-        snapshots=snapshots,
-    )
-    stats_ref = cal_ref.run()
-    std, cluster_count, kde_ref, hist_ref, entropy, observations = stats_ref
-    kde_ref = np.array(kde_ref[0])  # Get first snapshot
-    print(f"Reference model (d={d_ref}, mu={mu_ref}) completed")
-    
-    # Create heatmap for KDE differences
-    kde_diffs = np.zeros((len(ds), len(mus)))
-    hist_diffs = np.zeros((len(ds), len(mus)))
-    
-    for row, mu in enumerate(mus):
-        for col, d in enumerate(ds):
-            cal = MultiDW(
-                N=1000,
-                d=d,
-                mu=mu,
-                t=int(10 * (3 + 1 / mu)),
-                topology="full",
-                num_of_runs=5,
-                snapshots=snapshots,
-            )
-            stats = cal.run()
-            std, cluster_count, kde, hist, entropy, observations = stats
-            kde = np.array(kde[0])  # Get first snapshot
-            hist = np.array(hist[0])  # Get first snapshot
-            
-            # Calculate sum of absolute differences in kde
-            kde_diffs[row, col] = np.sum(np.abs(kde - kde_ref))
-            
-            # Calculate sum of absolute differences in histogram
-            hist_diffs[row, col] = np.sum(np.abs(hist - hist_ref))
-            
-            print(f"Completed d={d}, mu={mu}")
-    
-    # Calculate extent to align pixels with data points
-    data_step = ds[1] - ds[0]
-    extent_min = ds[0] - data_step / 2
-    extent_max = ds[-1] + data_step / 2
-    
-    plt.figure(figsize=(10, 6))
-    ax = plt.gca()
-    im = ax.imshow(kde_diffs, extent=(extent_min, extent_max, extent_min, extent_max), origin="lower", aspect="auto")
-    ax.set_xticks(ds)
-    ax.set_xticklabels([f"{val:.2f}" for val in ds])
-    ax.set_yticks(mus)
-    ax.set_yticklabels([f"{val:.2f}" for val in mus])
-    plt.colorbar(im, label="Sum of KDE Differences")
-    plt.title(f"Sum of KDE Differences from (d={d_ref}, mu={mu_ref})")
-    plt.xlabel("d")
-    plt.ylabel("mu")
-    plt.tight_layout()
-    plt.savefig(f"results/kde_diff_heatmap_d{d_ref}_mu{mu_ref}.png")
-    plt.close()
-
-    plt.figure(figsize=(10, 6))
-    ax = plt.gca()
-    im = ax.imshow(hist_diffs, extent=(extent_min, extent_max, extent_min, extent_max), origin="lower", aspect="auto")
-    ax.set_xticks(ds)
-    ax.set_xticklabels([f"{val:.2f}" for val in ds])
-    ax.set_yticks(mus)
-    ax.set_yticklabels([f"{val:.2f}" for val in mus])
-    plt.colorbar(im, label="Sum of Histogram Differences")
-    plt.title(f"Sum of Histogram Differences from (d={d_ref}, mu={mu_ref})")
-    plt.xlabel("d")
-    plt.ylabel("mu")
-    plt.tight_layout()
-    plt.savefig(f"results/hist_diff_heatmap_d{d_ref}_mu{mu_ref}.png")
-    plt.close()
-
-
 def wasserstein_distance_heatmap(d_ref, mu_ref, snapshot):
     """
     Create heatmaps showing the Wasserstein distance
@@ -198,7 +104,7 @@ def wasserstein_distance_heatmap(d_ref, mu_ref, snapshot):
         snapshots=snapshots,
     )
     stats_ref = cal_ref.run()
-    std, cluster_count, kde_ref, hist_ref, entropy, observations_ref = stats_ref
+    std, cluster_count, hist_ref, entropy, observations_ref = stats_ref
     ref_obs = np.array(observations_ref[0][0])  # Get first run, first snapshot
     peaks_ref = len(find_peaks(ref_obs)[0])
     print(f"Reference model (d={d_ref}, mu={mu_ref}) completed")
@@ -218,7 +124,7 @@ def wasserstein_distance_heatmap(d_ref, mu_ref, snapshot):
                 snapshots=snapshots,
             )
             stats = cal.run()
-            std, cluster_count, kde, hist, entropy, observations = stats
+            std, cluster_count, hist, entropy, observations = stats
             
             # Calculate Wasserstein distance for each run and take the mean
             wasserstein_dists_per_run = []
@@ -281,7 +187,7 @@ def polarization_heatmap(snapshot):
                 snapshots=snapshots,
             )
             stats = cal.run()
-            std, cluster_count, kde, hist, entropy, observations = stats
+            std, cluster_count, hist, entropy, observations = stats
             
             # Calculate polarization for each run and take the mean
             polarizations_per_run = []
@@ -345,7 +251,7 @@ def all_methods(d_ref, mu_ref, snapshot1, snapshot2):
         snapshots=snapshots,
     )
     stats_ref = cal_ref.run()
-    std_ref, cluster_count_ref, kde_ref, hist_ref, entropy_ref, observations_ref = stats_ref
+    std_ref, cluster_count_ref, hist_ref, entropy_ref, observations_ref = stats_ref
     
     # Extract reference values for both snapshots
     ref_entropy_s1 = entropy_ref[0]  # First snapshot
@@ -395,7 +301,7 @@ def all_methods(d_ref, mu_ref, snapshot1, snapshot2):
                 snapshots=snapshots,
             )
             stats = cal.run()
-            std, cluster_count, kde, hist, entropy, observations = stats
+            std, cluster_count, hist, entropy, observations = stats
             
             # Extract values for both snapshots
             curr_entropy_s1 = entropy[0]
